@@ -1,1 +1,27 @@
-{"agent":"codex","project":"apt-search","title":"실거래가 데이터 수집","status":"working","now":"국토부 API 페이지네이션 처리 중","steps":[{"text":"API 키 발급","state":"done"},{"text":"수집 스크립트","state":"doing","detail":"2019~2026년, 월별 호출"},{"text":"정제","state":"todo"},{"text":"색인","state":"todo"}]}
+{
+  "agent": "codex",
+  "project": "apt-search",
+  "title": "아파트 검색 포트폴리오",
+  "task": "실거래가 데이터 수집",
+  "status": "working",
+  "now": "국토부 API 페이지네이션 처리 중",
+  "steps": [
+    {
+      "text": "API 키 발급",
+      "state": "done"
+    },
+    {
+      "text": "수집 스크립트",
+      "state": "doing",
+      "detail": "2019~2026년, 월별 호출"
+    },
+    {
+      "text": "정제",
+      "state": "todo"
+    },
+    {
+      "text": "색인",
+      "state": "todo"
+    }
+  ]
+}

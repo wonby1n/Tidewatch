@@ -219,7 +219,6 @@ html[data-size=l] .grid{zoom:1.18}
 .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .proj{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--sub);font-weight:700;flex-wrap:wrap}
 .agent{font-size:11px;font-weight:800;padding:1px 7px;border-radius:6px;background:var(--chip);color:var(--ink)}
-.title{font-size:17px;font-weight:800;margin-top:2px}
 .x{flex:none;width:24px;height:24px;border:0;border-radius:8px;background:none;color:var(--sub);font-size:15px;line-height:24px;cursor:pointer;opacity:.45}
 .x:hover{opacity:1;background:var(--chip)}
 .right{display:flex;gap:4px;align-items:center}
@@ -233,22 +232,49 @@ html[data-size=l] .grid{zoom:1.18}
 .err .lbl{color:var(--err)}
 .err code{display:inline-block;font:700 12px/1.4 ui-monospace,Consolas,monospace;margin:2px 0 4px;word-break:break-all}
 .err pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,Consolas,monospace;max-height:7.5em;overflow:auto}
-.now{margin:12px 0 0;font-size:16px;font-weight:700}
-.pct{margin-top:12px;font-size:12px;color:var(--sub);font-weight:700}
-.pct b{font-size:22px;color:var(--ink);font-weight:900;margin-right:4px}
-ul{list-style:none;margin:6px 0 0;padding:0}
-li{padding:2px 0 2px 22px;position:relative;font-size:14px}
-li:before{position:absolute;left:2px;top:2px}
-li .t{margin-left:6px;font-size:11px;color:var(--sub);font-weight:600}
-li small{display:block;color:var(--sub);font-size:12px;font-weight:500;line-height:1.4}
-li.done>span:first-child{color:var(--sub);text-decoration:line-through}li.done:before{content:"✓";color:var(--c)}
-li.doing{font-weight:800}li.doing:before{content:"▶";color:var(--c)}
-li.todo:before{content:"○";color:var(--sub)}
-li.skipped{color:var(--sub)}li.skipped:before{content:"–"}
-li.error{font-weight:800;color:var(--err)}li.error:before{content:"✕";color:var(--err)}
-li.error small{color:var(--err)}
-details{margin-top:8px;font-size:13px;color:var(--sub)}summary{cursor:pointer;font-weight:700}
-details li:before{content:"·"}
+.title{font-size:18px;font-weight:900;margin-top:4px;line-height:1.3}
+.task{margin-top:2px;font-size:13px;color:var(--sub);font-weight:600}
+.task b{color:var(--ink);font-weight:700}
+.now{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--c) 11%,var(--card));border:1px solid color-mix(in srgb,var(--c) 35%,transparent)}
+.now .lbl{display:flex;align-items:center;gap:6px;color:var(--c)}
+.now .dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 0 var(--c);animation:ping 1.6s ease-out infinite}
+.card.done .now .dot,.card.sleep .now .dot{animation:none}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
+.now p{margin:3px 0 0;font-size:16px;font-weight:800;line-height:1.4}
+.track{display:flex;gap:4px;margin-top:14px}
+.track i{flex:1;height:7px;border-radius:4px;background:var(--line)}
+.track i.done{background:var(--c)}
+.track i.skipped{background:color-mix(in srgb,var(--c) 40%,var(--line))}
+.track i.doing{background:linear-gradient(90deg,var(--c) 0 50%,var(--line) 50%) 0/200% 100%;animation:fillbar 1.6s linear infinite}
+.track i.error{background:var(--err)}
+@keyframes fillbar{to{background-position:-100% 0}}
+.track-txt{margin-top:6px;font-size:12px;color:var(--sub);font-weight:700}
+.track-txt b{color:var(--ink)}
+.road{list-style:none;margin:12px 0 0;padding:0}
+.road li{position:relative;padding:0 0 12px 28px;font-size:14px}
+.road li:not(:last-child):after{content:"";position:absolute;left:9px;top:20px;bottom:0;width:2px;background:var(--line)}
+.road li.done:not(:last-child):after,.road li.skipped:not(:last-child):after{background:var(--c)}
+.road .n{position:absolute;left:0;top:1px;width:20px;height:20px;border-radius:50%;border:2px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:11px;font-weight:900;color:#fff;box-sizing:border-box}
+.road li.done .n{background:var(--c);border-color:var(--c)}
+.road li.done .n:before{content:"✓"}
+.road li.skipped .n{border-style:dashed;border-color:var(--c)}
+.road li.doing .n{border-color:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 22%,transparent)}
+.road li.doing .n:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.road li.error .n{background:var(--err);border-color:var(--err)}
+.road li.error .n:before{content:"✕"}
+.road .tx{font-weight:600}
+.road li.done .tx,.road li.skipped .tx{color:var(--sub)}
+.road li.skipped .tx{text-decoration:line-through}
+.road li.doing .tx{font-weight:900}
+.road li.error .tx{font-weight:900;color:var(--err)}
+.road li.todo .tx{color:var(--sub);font-weight:500}
+.here{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--c);color:#fff;font-size:10px;font-weight:900;vertical-align:2px}
+.road li.error .here{background:var(--err)}
+.road .t{margin-left:6px;font-size:11px;color:var(--sub);font-weight:600}
+.road small{display:block;color:var(--sub);font-size:12px;font-weight:500;line-height:1.4;margin-top:1px}
+.road li.error small{color:var(--err)}
+.log{list-style:disc;margin:6px 0 0;padding-left:18px}
+.log li{padding:1px 0}
 .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--sub)}
 .card.sleep .ago{color:#b07a00;font-weight:800}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -306,7 +332,7 @@ function fill(el,s){
   const steps=(Array.isArray(s.steps)?s.steps:[]).filter(x=>x&&typeof x.text==='string');
   const log=Array.isArray(s.log)?s.log:[];const timing=s.timing||{};
   const done=steps.filter(x=>x.state==='done'||x.state==='skipped').length;
-  const pct=s.st==='done'?100:steps.length?Math.round(done/steps.length*100):0;
+  const pct=s.st==='done'?100:steps.length?Math.round(done/steps.length*100):0; // 물 높이에만 씀
   const sleep=s.st==='working'&&Date.now()-s.mtime>30*6e4;
   el.className='card '+s.st+(sleep?' sleep':'');
   el.style.setProperty('--c',color);
@@ -315,13 +341,18 @@ function fill(el,s){
   el.querySelector('.bubble').textContent=sleep?'z':mark;
   const agent=s.agent?'<span class="agent">'+esc(AGENT[String(s.agent).toLowerCase()]||s.agent)+'</span>':'';
   const err=s.error&&(s.error.message||s.error.where);
-  const html='<div class="top"><div><div class="proj">'+agent+'</div><div class="title">'+esc(s.title||s.id)+'</div></div><span class="right"><span class="badge">'+label+'</span><button class="x" title="이 카드 지우기" aria-label="이 카드 지우기">✕</button></span></div>'
+  const cur=steps.findIndex(x=>x.state==='doing'||x.state==='error');
+  const next=steps.find((x,i)=>x.state==='todo'&&i>cur);
+  const html='<div class="top"><div class="proj">'+agent+'</div><span class="right"><span class="badge">'+label+'</span><button class="x" title="이 카드 지우기" aria-label="이 카드 지우기">✕</button></span></div>'
+   +'<div class="title">'+esc(s.title||s.id)+'</div>'
+   +(s.task?'<div class="task">이번 일 · <b>'+esc(s.task)+'</b></div>':'')
+   +(s.now?'<div class="now"><span class="lbl"><i class="dot"></i>'+(s.st==='done'?'결과':'지금')+'</span><p>'+esc(s.now)+'</p></div>':'')
    +(s.needsYou?'<div class="you"><span class="lbl">네가 할 일</span>'+esc(s.needsYou)+'</div>':'')
    +(err?'<div class="err"><span class="lbl">어디서 터졌나</span>'+(s.error.where?'<code>'+esc(s.error.where)+'</code>':'')+(s.error.message?'<pre>'+esc(s.error.message)+'</pre>':'')+'</div>':'')
-   +(s.now?'<p class="now"><span class="lbl">지금</span>'+esc(s.now)+'</p>':'')
-   +'<div class="pct"><b>'+pct+'%</b>'+(steps.length?done+' / '+steps.length+' 단계':'')+'</div>'
-   +(steps.length?'<ul>'+steps.map(x=>{const t=stepTime(x,timing[x.text]);return '<li class="'+esc(x.state||'todo')+'"><span>'+esc(x.text)+'</span>'+(t?'<span class="t">'+t+'</span>':'')+(x.detail?'<small>'+esc(x.detail)+'</small>':'')+'</li>'}).join('')+'</ul>':'')
-   +(log.length?'<details><summary>기록 '+log.length+'개</summary><ul>'+log.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul></details>':'')
+   +(steps.length?'<div class="track">'+steps.map(x=>'<i class="'+esc(x.state||'todo')+'"></i>').join('')+'</div>'
+     +'<div class="track-txt"><b>'+done+' / '+steps.length+'</b> 단계'+(s.st==='done'?' · 모두 끝':next?' · 다음: '+esc(next.text):'')+'</div>'
+     +'<ol class="road">'+steps.map(x=>{const st=x.state||'todo';const t=stepTime(x,timing[x.text]);return '<li class="'+esc(st)+'"><span class="n"></span><span class="tx">'+esc(x.text)+'</span>'+(st==='doing'?'<span class="here">지금 여기</span>':st==='error'?'<span class="here">여기서 막힘</span>':'')+(t?'<span class="t">'+t+'</span>':'')+(x.detail?'<small>'+esc(x.detail)+'</small>':'')+'</li>'}).join('')+'</ol>':'')
+   +(log.length?'<details><summary>기록 '+log.length+'개</summary><ul class="log">'+log.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul></details>':'')
    +'<div class="foot"><span>'+esc(s.goal||'')+'</span><span class="ago">'+(sleep?'30분째 조용함 · ':'')+ago(s.mtime)+'</span></div>';
   if(el._html!==html){
     const c=el.querySelector('.content');const open=c.querySelector('details')?.open;
