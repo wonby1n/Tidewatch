@@ -17,6 +17,85 @@ Each card fills with water as the work moves forward.
 
 > The board UI is in Korean for now. Labels are translated in the tables below; an English UI is on the roadmap.
 
+## Desktop app (Windows)
+
+Tidewatch now includes a standalone Electron desktop app. It opens its own window without launching Edge or Chrome. The board and compact view run inside the app; window size and position are remembered, and opening it again focuses the existing instance. The local backend stops when you close the last app window.
+
+Build and install from source (Node.js and npm required):
+
+```powershell
+git clone https://github.com/wonby1n/Tidewatch.git
+cd Tidewatch
+npm ci
+npm run package:win
+powershell -NoProfile -File desktop/install.ps1
+```
+
+Open **Tidewatch** from your desktop. Existing session files in `~/.tidewatch` are preserved. The app uses web rendering internally and includes its own runtime; it does not use your installed browser. This build is unsigned. macOS and Linux desktop packaging has not been validated.
+
+For development: `npm start`. For the isolated desktop smoke check, set `TIDEWATCH_DIR` to a temporary folder and run `npm run test:desktop`.
+
+## Quick start
+
+**Requires [Node.js](https://nodejs.org) for agent updates.** On Windows, use the standalone desktop app above. The lightweight installer below uses an installed browser in app mode; the skills CLI installs the skill only.
+
+1. Choose an installation method below.
+2. For the full install, open **Tidewatch** from your desktop.
+3. Start a coding session and ask it to use Tidewatch: Claude Code `/tidewatch`; Codex `$tidewatch`. Include a concrete multi-step task so it has progress to report.
+4. Look for a card with your task, current step, and anything it needs from you. If no card appears, check the skill installation and write access to `~/.tidewatch` (see Usage below).
+
+**Preview without installing:** after downloading or cloning this repository, open [`docs/demo/index.html`](docs/demo/index.html) in your browser. It uses sample data; it does not connect agents, start a pet, or send notifications. Regenerate it with `node scripts/build-demo.mjs`.
+
+**What the board measures:** agent-reported status and completed steps. It does not independently inspect every process or estimate time remaining. If an agent stops reporting, the previous status can remain; check the last update time.
+
+## Lightweight install (browser app mode)
+
+Requires [Node.js](https://nodejs.org). Installs the skill for both Claude Code and Codex, and adds a **Tidewatch** icon to your desktop.
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
+```
+
+**macOS · Linux**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
+```
+
+**With the skills CLI** (skill only, no desktop app or pet):
+
+```sh
+npx skills add wonby1n/Tidewatch
+```
+
+**Manual**: download [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip), unzip the `tidewatch` folder into the skill folder below, and copy `tidewatch/scripts/tidewatch.mjs` to `~/.tidewatch/tidewatch.mjs`.
+
+| Agent | Skill folder |
+|---|---|
+| Claude Code | `~/.claude/skills/tidewatch` |
+| Codex | `~/.agents/skills/tidewatch` (older versions: `~/.codex/skills/tidewatch`) |
+
+## Usage
+
+1. Open **Tidewatch** from your desktop and keep it open. The standalone desktop app has its own window; the lightweight installer uses an address-bar-free browser window. It runs through a tiny server that only listens on your own machine (`127.0.0.1:47777`), which is what lets the app switch the pet and notifications on and off.
+2. In each session, say:
+   - Claude Code: "turn on tidewatch" or `/tidewatch`
+   - Codex: `$tidewatch` or "turn on tidewatch"
+3. From then on the session updates its card when it starts, finishes a step, hits an error, and right before it hands the turn back to you.
+
+For multi-step work the skill can switch itself on without being asked.
+
+### Codex sandbox
+
+Codex's default sandbox blocks writes outside the workspace, so it may ask for approval when it writes to `~/.tidewatch`. To stop the prompts, add the folder to `~/.codex/config.toml` (use your own home path; the setting name may differ between Codex versions):
+
+```toml
+[sandbox_workspace_write]
+writable_roots = ["C:\\Users\\me\\.tidewatch"]   # macOS / Linux: "/Users/me/.tidewatch"
+```
+
 ## Why
 
 When you run many agent sessions side by side, coming back to one usually means scrolling up through a wall of terminal output to remember *where was this one?* Tidewatch has each session write a short status card for itself, so one window tells you everything.
@@ -88,54 +167,6 @@ You get one OS notification the moment a session becomes **your turn**, **blocke
 | X eyes, shivering | 🔴 blocked | stopped by an error or a permission |
 | `z`, dozing | 🔵 with yellow text | working, but silent for 30+ minutes |
 | Smiling | 🟢 done | finished |
-
-## Install
-
-Requires [Node.js](https://nodejs.org). Installs the skill for both Claude Code and Codex, and adds a **Tidewatch** icon to your desktop.
-
-**Windows (PowerShell)**
-
-```powershell
-irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
-```
-
-**macOS · Linux**
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
-```
-
-**With the skills CLI** (skill only, no desktop app or pet):
-
-```sh
-npx skills add wonby1n/Tidewatch
-```
-
-**Manual**: download [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip), unzip the `tidewatch` folder into the skill folder below, and copy `tidewatch/scripts/tidewatch.mjs` to `~/.tidewatch/tidewatch.mjs`.
-
-| Agent | Skill folder |
-|---|---|
-| Claude Code | `~/.claude/skills/tidewatch` |
-| Codex | `~/.agents/skills/tidewatch` (older versions: `~/.codex/skills/tidewatch`) |
-
-## Usage
-
-1. Open **Tidewatch** from your desktop and keep it open. It is a narrow window without an address bar, made to sit at the side of your screen. It runs through a tiny server that only listens on your own machine (`127.0.0.1:47777`), which is what lets the app switch the pet and notifications on and off.
-2. In each session, say:
-   - Claude Code: "turn on tidewatch" or `/tidewatch`
-   - Codex: `$tidewatch` or "turn on tidewatch"
-3. From then on the session updates its card when it starts, finishes a step, hits an error, and right before it hands the turn back to you.
-
-For multi-step work the skill can switch itself on without being asked.
-
-### Codex sandbox
-
-Codex's default sandbox blocks writes outside the workspace, so it may ask for approval when it writes to `~/.tidewatch`. To stop the prompts, add the folder to `~/.codex/config.toml` (use your own home path; the setting name may differ between Codex versions):
-
-```toml
-[sandbox_workspace_write]
-writable_roots = ["C:\\Users\\me\\.tidewatch"]   # macOS / Linux: "/Users/me/.tidewatch"
-```
 
 ## When is a card done?
 

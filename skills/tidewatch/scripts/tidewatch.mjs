@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v3 — https://github.com/wonby1n/tidewatch
+// Tidewatch v4 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -142,6 +142,13 @@ async function ensureServer() {
 
 /** 현황판을 앱 창으로 연다. 로컬 서버로 열면 펫·알림·연결 관리까지 된다 */
 async function app(mini = false) {
+  const desktop = readJson(path.join(ROOT, 'desktop.json'), {});
+  if (typeof desktop.executable === 'string' && path.isAbsolute(desktop.executable) && fs.existsSync(desktop.executable)) {
+    const desktopEnv = { ...process.env };
+    delete desktopEnv.ELECTRON_RUN_AS_NODE;
+    spawn(desktop.executable, mini ? ['--mini'] : [], { env: desktopEnv, detached: true, stdio: 'ignore', windowsHide: false }).on('error', (err) => console.error(`Tidewatch 앱을 열지 못했어요: ${err.message}`)).unref();
+    return desktop.executable;
+  }
   const file = build();
   const base = (await ensureServer()) ? `http://127.0.0.1:${PORT}/` : pathToFileURL(file).href;
   const url = mini ? `${base}?mini=1` : base;

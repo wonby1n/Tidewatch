@@ -143,7 +143,15 @@ check('notifications fire once when a session becomes waiting, and can be turned
     check('the app server hands the page a token and refuses API calls without it', () => {});
     assert.equal((await call('/api/status', null, 'nope')).status, 403);
     const { request } = await import('node:http');
-    const spoof = await new Promise((resolve) => request({ host: '127.0.0.1', port, path: '/', headers: { host: 'evil.example:' + port } }, (r) => resolve(r.statusCode)).end());
+    const spoof = await new Promise((resolve, reject) => {
+      const req = request({ host: '127.0.0.1', port, path: '/', headers: { host: 'evil.example:' + port } }, (r) => {
+        r.on('error', reject);
+        r.on('end', () => resolve(r.statusCode));
+        r.resume();
+      });
+      req.on('error', reject);
+      req.end();
+    });
     assert.equal(spoof, 403);
     let st = await (await call('/api/status')).json();
     check('status reports Claude Code and Codex as not connected in an empty home', () => {

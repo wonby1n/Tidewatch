@@ -14,6 +14,85 @@ Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으
 
 </div>
 
+## 전용 데스크톱 앱 (Windows)
+
+Edge·Chrome을 실행하지 않고 자체 창으로 열리는 Electron 앱을 추가했습니다. 현황판과 메모장 모드를 앱 창으로 열고, 창 크기와 위치를 기억합니다. 다시 실행하면 기존 앱 창으로 돌아오며, 마지막 창을 닫으면 앱이 시작한 로컬 서버도 종료됩니다.
+
+소스에서 빌드·설치하려면 Node.js와 npm이 필요합니다.
+
+```powershell
+git clone https://github.com/wonby1n/Tidewatch.git
+cd Tidewatch
+npm ci
+npm run package:win
+powershell -NoProfile -File desktop/install.ps1
+```
+
+설치 후 바탕화면 **Tidewatch**를 실행하세요. `~/.tidewatch`의 기존 세션은 유지합니다. 내부 화면은 웹 기술로 구현하지만 자체 실행 환경을 포함하므로 설치된 브라우저에 의존하지 않습니다. 현재 빌드는 코드 서명되지 않았으며, macOS·Linux 전용 앱 패키징은 검증하지 않았습니다.
+
+개발 실행은 `npm start`입니다. 앱 검사는 `TIDEWATCH_DIR`을 임시 폴더로 지정한 뒤 `npm run test:desktop`으로 실행합니다.
+
+## 빠른 시작
+
+**에이전트의 상태 갱신에는 [Node.js](https://nodejs.org)가 필요합니다.** Windows에서는 위 전용 앱을 권합니다. 아래 경량 설치는 설치된 브라우저의 앱 모드를 사용하며, skills CLI는 스킬만 설치합니다.
+
+1. 아래에서 설치 방법을 선택합니다.
+2. 전체 설치를 했다면 바탕화면의 **Tidewatch**를 엽니다.
+3. 코딩 세션에 구체적인 여러 단계 작업과 함께 Tidewatch 사용을 요청합니다. Claude Code는 `/tidewatch`, Codex는 `$tidewatch`를 사용하세요.
+4. 작업명, 현재 단계, 내가 할 일이 담긴 첫 카드를 확인합니다. 카드가 없다면 스킬 설치 여부와 `~/.tidewatch` 쓰기 권한을 확인하세요. 자세한 내용은 아래 쓰는 법에 있습니다.
+
+**설치 없이 화면 살펴보기:** 저장소를 다운로드하거나 복제한 뒤 [`docs/demo/index.html`](docs/demo/index.html)을 브라우저로 여세요. 예제 데이터 화면이며, 에이전트 연결·펫 실행·알림 전송은 하지 않습니다. `node scripts/build-demo.mjs`로 다시 생성할 수 있습니다.
+
+**진행률의 의미:** 에이전트가 기록한 단계의 완료 비율입니다. 모든 실행 프로세스를 직접 감지하거나 남은 시간을 예측하지 않습니다. 에이전트가 보고를 멈추면 이전 상태가 남을 수 있으므로 마지막 갱신 시간을 함께 확인하세요.
+
+## 경량 설치 (브라우저 앱 모드)
+
+[Node.js](https://nodejs.org)가 필요해요. Claude Code와 Codex에 한 번에 설치되고, 바탕화면에 **Tidewatch** 아이콘이 생겨요.
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
+```
+
+**macOS · Linux**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
+```
+
+**skills CLI로** (스킬만, 바탕화면 앱·펫 없이):
+
+```sh
+npx skills add wonby1n/Tidewatch
+```
+
+**직접 설치**: [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip)을 받아서 `tidewatch` 폴더를 아래 위치에 풀고, `tidewatch/scripts/tidewatch.mjs`를 `~/.tidewatch/tidewatch.mjs`로 복사하면 돼요.
+
+| 에이전트 | 스킬 폴더 |
+|---|---|
+| Claude Code | `~/.claude/skills/tidewatch` |
+| Codex | `~/.agents/skills/tidewatch` (예전 버전은 `~/.codex/skills/tidewatch`) |
+
+## 쓰는 법
+
+1. 바탕화면의 **Tidewatch**를 눌러 앱을 열어 둬요. 전용 앱은 자체 창으로, 경량 설치는 주소창 없는 브라우저 창으로 열려요. 앱은 내 컴퓨터 안에서만 도는 작은 서버(`127.0.0.1:47777`, 외부 접속 불가)로 열려서 펫·알림·연결 관리까지 할 수 있어요.
+2. 각 세션에서 이렇게 말해요.
+   - Claude Code: `타이드워치 켜줘` 또는 `/tidewatch`
+   - Codex: `$tidewatch` 또는 `타이드워치 켜줘`
+3. 그다음부터는 세션이 작업을 시작할 때, 단계를 끝낼 때, 오류가 났을 때, 그리고 턴을 끝내기 직전에 알아서 카드를 갱신해요.
+
+여러 단계짜리 작업을 맡기면 말하지 않아도 스킬이 알아서 켜질 수 있어요.
+
+### Codex 샌드박스
+
+Codex의 기본 샌드박스는 작업 폴더 밖에 쓰는 걸 막아서, `~/.tidewatch`에 쓸 때 승인을 물어볼 수 있어요. 매번 묻지 않게 하려면 `~/.codex/config.toml`에 이렇게 추가하세요 (경로는 본인 홈 폴더로, 설정 이름은 Codex 버전에 따라 다를 수 있어요).
+
+```toml
+[sandbox_workspace_write]
+writable_roots = ["C:\\Users\\me\\.tidewatch"]   # macOS·Linux: "/Users/me/.tidewatch"
+```
+
 ## 왜 만들었나
 
 세션을 여러 개 띄워 놓고 일하다 보면, 다른 세션을 보다가 돌아왔을 때 *이 세션이 어디까지 했더라?* 하면서 터미널 로그를 한참 거슬러 올라가게 돼요. Tidewatch는 각 세션이 스스로 상태를 적어 두게 해서, 브라우저 창 하나만 보면 바로 알 수 있게 해 줘요.
@@ -74,54 +153,6 @@ Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으
 | X 눈으로 덜덜 | 🔴 막힘 | 오류나 권한 때문에 멈췄어요 |
 | `z` 졸음 | 🔵 + 노란 글씨 | 작업 중인데 30분째 소식이 없어요 |
 | 웃음 | 🟢 끝 | 다 했어요 |
-
-## 설치
-
-[Node.js](https://nodejs.org)가 필요해요. Claude Code와 Codex에 한 번에 설치되고, 바탕화면에 **Tidewatch** 아이콘이 생겨요.
-
-**Windows (PowerShell)**
-
-```powershell
-irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
-```
-
-**macOS · Linux**
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
-```
-
-**skills CLI로** (스킬만, 바탕화면 앱·펫 없이):
-
-```sh
-npx skills add wonby1n/Tidewatch
-```
-
-**직접 설치**: [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip)을 받아서 `tidewatch` 폴더를 아래 위치에 풀고, `tidewatch/scripts/tidewatch.mjs`를 `~/.tidewatch/tidewatch.mjs`로 복사하면 돼요.
-
-| 에이전트 | 스킬 폴더 |
-|---|---|
-| Claude Code | `~/.claude/skills/tidewatch` |
-| Codex | `~/.agents/skills/tidewatch` (예전 버전은 `~/.codex/skills/tidewatch`) |
-
-## 쓰는 법
-
-1. 바탕화면의 **Tidewatch**를 눌러 앱을 열어 둬요. 주소창 없는 좁은 창이라 화면 옆에 붙여 두기 좋아요. 앱은 내 컴퓨터 안에서만 도는 작은 서버(`127.0.0.1:47777`, 외부 접속 불가)로 열려서 펫·알림·연결 관리까지 할 수 있어요.
-2. 각 세션에서 이렇게 말해요.
-   - Claude Code: `타이드워치 켜줘` 또는 `/tidewatch`
-   - Codex: `$tidewatch` 또는 `타이드워치 켜줘`
-3. 그다음부터는 세션이 작업을 시작할 때, 단계를 끝낼 때, 오류가 났을 때, 그리고 턴을 끝내기 직전에 알아서 카드를 갱신해요.
-
-여러 단계짜리 작업을 맡기면 말하지 않아도 스킬이 알아서 켜질 수 있어요.
-
-### Codex 샌드박스
-
-Codex의 기본 샌드박스는 작업 폴더 밖에 쓰는 걸 막아서, `~/.tidewatch`에 쓸 때 승인을 물어볼 수 있어요. 매번 묻지 않게 하려면 `~/.codex/config.toml`에 이렇게 추가하세요 (경로는 본인 홈 폴더로, 설정 이름은 Codex 버전에 따라 다를 수 있어요).
-
-```toml
-[sandbox_workspace_write]
-writable_roots = ["C:\\Users\\me\\.tidewatch"]   # macOS·Linux: "/Users/me/.tidewatch"
-```
 
 ## 언제 100%가 되나
 
