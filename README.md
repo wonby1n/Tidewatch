@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🌊 Tidewatch
+<img src="skills/tidewatch/assets/tidewatch.png" alt="" width="96">
+
+# Tidewatch
 
 **AI 코딩 세션 10개를 띄워놔도, 지금 누가 어디까지 했는지 한눈에.**
 

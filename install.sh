@@ -16,9 +16,11 @@ fi
 if [ ! -f "$SRC/SKILL.md" ]; then
   TMP="$(mktemp -d)"
   SRC="$TMP/tidewatch"
-  mkdir -p "$SRC/scripts"
+  mkdir -p "$SRC/scripts" "$SRC/assets"
   curl -fsSL "$RAW/skills/tidewatch/SKILL.md" -o "$SRC/SKILL.md"
   curl -fsSL "$RAW/skills/tidewatch/scripts/tidewatch.mjs" -o "$SRC/scripts/tidewatch.mjs"
+  curl -fsSL "$RAW/skills/tidewatch/assets/tidewatch.png" -o "$SRC/assets/tidewatch.png"
+  curl -fsSL "$RAW/skills/tidewatch/assets/tidewatch.ico" -o "$SRC/assets/tidewatch.ico"
 fi
 
 install_to() {
@@ -35,6 +37,7 @@ install_to "$HOME/.agents/skills"          # Codex
 
 mkdir -p "$HOME/.tidewatch"
 cp "$SRC/scripts/tidewatch.mjs" "$HOME/.tidewatch/tidewatch.mjs"
+cp "$SRC/assets/tidewatch.png" "$HOME/.tidewatch/tidewatch.png"
 PAGE="$(node "$HOME/.tidewatch/tidewatch.mjs" build)"
 if [ -n "$TMP" ]; then rm -rf "$TMP"; fi
 
@@ -51,7 +54,7 @@ case "$(uname -s)" in
     DESK="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
     if [ -d "$DESK" ]; then
       LAUNCHER="$DESK/tidewatch.desktop"
-      printf '[Desktop Entry]\nType=Application\nName=Tidewatch\nComment=AI 세션 현황판\nExec="%s" "%s/.tidewatch/tidewatch.mjs" app\nIcon=dialog-information\nTerminal=false\n' "$NODE_BIN" "$HOME" > "$LAUNCHER"
+      printf '[Desktop Entry]\nType=Application\nName=Tidewatch\nComment=AI 세션 현황판\nExec="%s" "%s/.tidewatch/tidewatch.mjs" app\nIcon=%s/.tidewatch/tidewatch.png\nTerminal=false\n' "$NODE_BIN" "$HOME" "$HOME" > "$LAUNCHER"
       chmod +x "$LAUNCHER"
       echo "  ✓ 바탕화면 바로가기: $LAUNCHER"
     fi

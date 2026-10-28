@@ -15,8 +15,11 @@ if (-not $Src -or -not (Test-Path (Join-Path $Src 'SKILL.md'))) {
   $Tmp = Join-Path ([IO.Path]::GetTempPath()) ("tidewatch-" + [guid]::NewGuid())
   $Src = Join-Path $Tmp 'tidewatch'
   New-Item -ItemType Directory -Force -Path (Join-Path $Src 'scripts') | Out-Null
+  New-Item -ItemType Directory -Force -Path (Join-Path $Src 'assets') | Out-Null
   Invoke-WebRequest "$Raw/skills/tidewatch/SKILL.md" -OutFile (Join-Path $Src 'SKILL.md') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/scripts/tidewatch.mjs" -OutFile (Join-Path $Src 'scripts\tidewatch.mjs') -UseBasicParsing
+  Invoke-WebRequest "$Raw/skills/tidewatch/assets/tidewatch.ico" -OutFile (Join-Path $Src 'assets\tidewatch.ico') -UseBasicParsing
+  Invoke-WebRequest "$Raw/skills/tidewatch/assets/tidewatch.png" -OutFile (Join-Path $Src 'assets\tidewatch.png') -UseBasicParsing
 }
 
 function Install-To($dir) {
@@ -35,6 +38,8 @@ if (Test-Path (Join-Path $HOME '.codex')) { Install-To (Join-Path $HOME '.codex\
 $Board = Join-Path $HOME '.tidewatch'
 New-Item -ItemType Directory -Force -Path $Board | Out-Null
 Copy-Item (Join-Path $Src 'scripts\tidewatch.mjs') (Join-Path $Board 'tidewatch.mjs') -Force
+$Icon = Join-Path $Board 'tidewatch.ico'
+Copy-Item (Join-Path $Src 'assets\tidewatch.ico') $Icon -Force
 $Page = node (Join-Path $Board 'tidewatch.mjs') build
 if ($Tmp) { Remove-Item -Recurse -Force $Tmp }
 
@@ -54,10 +59,10 @@ try {
   if ($Browser) {
     $Shortcut.TargetPath = $Browser
     $Shortcut.Arguments = "--app=`"$(([Uri]$Page).AbsoluteUri)`" --window-size=460,940"
-    $Shortcut.IconLocation = "$Browser,0"
   } else {
     $Shortcut.TargetPath = $Page
   }
+  $Shortcut.IconLocation = "$Icon,0"
   $Shortcut.Description = 'Tidewatch - AI session board'
   $Shortcut.Save()
   Write-Host "  + Desktop shortcut: $Link"
