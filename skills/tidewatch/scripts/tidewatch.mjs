@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Tidewatch v3 — https://github.com/wonby1n/tidewatch
-// usage: node tidewatch.mjs <build|open|app|pet|path|remove <id>|prune|notify>
+// usage: node tidewatch.mjs <build|open|app|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import http from 'node:http';
+import crypto from 'node:crypto';
 
 const ROOT = process.env.TIDEWATCH_DIR || path.join(os.homedir(), '.tidewatch');
 const SESS = path.join(ROOT, 'sessions');
@@ -14,6 +16,9 @@ const PAGE = path.join(ROOT, 'tidewatch.html');
 const DATA = path.join(ROOT, 'board-data.js');
 const SETTINGS = path.join(ROOT, 'settings.json');
 const NOTIFY_STATES = ['waiting', 'blocked', 'done'];
+const PORT = Number(process.env.TIDEWATCH_PORT || 47777);
+const PET_PID = path.join(ROOT, 'pet.pid');
+const SELF = fileURLToPath(import.meta.url);
 
 function settings() {
   const s = readJson(SETTINGS, {});
@@ -116,14 +121,139 @@ function findBrowser() {
   return candidates.find((p) => p && !p.startsWith('undefined') && fs.existsSync(p));
 }
 
-function app() {
+/** 로컬 서버가 떠 있는지 */
+function ping() {
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port: PORT, path: '/api/ping', timeout: 400 }, (res) => { res.resume(); resolve(res.statusCode === 200); });
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+  });
+}
+
+async function ensureServer() {
+  if (await ping()) return true;
+  spawn(process.execPath, [SELF, 'serve'], { detached: true, stdio: 'ignore', windowsHide: true, env: process.env }).on('error', () => {}).unref();
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    if (await ping()) return true;
+  }
+  return false;
+}
+
+/** 현황판을 앱 창으로 연다. 로컬 서버로 열면 펫·알림·연결 관리까지 된다 */
+async function app() {
   const file = build();
+  const url = (await ensureServer()) ? `http://127.0.0.1:${PORT}/` : pathToFileURL(file).href;
   const browser = findBrowser();
-  if (!browser) return open();
-  const child = spawn(browser, [`--app=${pathToFileURL(file).href}`, '--window-size=460,940'], { detached: true, stdio: 'ignore' });
-  child.on('error', () => open());
-  child.unref();
-  return file;
+  if (!browser) {
+    const [bin, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+      : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+    execFile(bin, args, () => {});
+    return url;
+  }
+  spawn(browser, [`--app=${url}`, '--window-size=480,960'], { detached: true, stdio: 'ignore' }).on('error', () => open()).unref();
+  return url;
+}
+
+// ---------- 펫 ----------
+function petRunning() {
+  try {
+    const pid = Number(fs.readFileSync(PET_PID, 'utf8').trim());
+    if (!pid) return false;
+    process.kill(pid, 0);
+    return true;
+  } catch { return false; }
+}
+
+function petStop() {
+  try { process.kill(Number(fs.readFileSync(PET_PID, 'utf8').trim())); } catch {}
+  fs.rmSync(PET_PID, { force: true });
+}
+
+// ---------- Claude Code · Codex 연결 ----------
+const AGENT_DIRS = {
+  claude: [path.join(os.homedir(), '.claude', 'skills', 'tidewatch')],
+  codex: [path.join(os.homedir(), '.agents', 'skills', 'tidewatch'), path.join(os.homedir(), '.codex', 'skills', 'tidewatch')],
+};
+
+function agents() {
+  const now = Date.now();
+  const sessions = load(now);
+  const out = {};
+  for (const [name, dirs] of Object.entries(AGENT_DIRS)) {
+    const mine = sessions.filter((s) => String(s.agent ?? '').toLowerCase() === name);
+    out[name] = {
+      installed: dirs.some((d) => fs.existsSync(path.join(d, 'SKILL.md'))),
+      sessions: mine.length,
+      lastSeen: mine.length ? Math.max(...mine.map((s) => s.mtime)) : null,
+    };
+  }
+  return out;
+}
+
+function connect(name) {
+  const src = path.join(ROOT, 'skill');
+  if (!fs.existsSync(path.join(src, 'SKILL.md'))) throw new Error('스킬 원본이 없어요. 설치 명령을 다시 실행해 주세요.');
+  const dest = AGENT_DIRS[name]?.[0];
+  if (!dest) throw new Error('모르는 에이전트예요.');
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.cpSync(src, dest, { recursive: true });
+}
+
+// ---------- 로컬 서버 (127.0.0.1 전용) ----------
+function serve() {
+  ensureDirs();
+  const token = crypto.randomBytes(16).toString('hex');
+  const hosts = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+  const server = http.createServer((req, res) => {
+    const send = (code, type, body) => { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(body); };
+    const json = (code, obj) => send(code, 'application/json; charset=utf-8', JSON.stringify(obj));
+    // 다른 사이트가 이름을 바꿔 들어오거나(DNS rebinding) 몰래 요청하지 못하게
+    if (!hosts.has(req.headers.host ?? '')) return send(403, 'text/plain', 'forbidden');
+    const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
+    try {
+      if (req.method === 'GET' && url.pathname === '/api/ping') return json(200, { ok: true });
+      if (req.method === 'GET' && url.pathname === '/') {
+        if (!fs.existsSync(PAGE)) build();
+        const html = fs.readFileSync(PAGE, 'utf8').replace('</head>', `<script>window.TW_TOKEN=${JSON.stringify(token)}</script></head>`);
+        return send(200, 'text/html; charset=utf-8', html);
+      }
+      if (req.method === 'GET' && url.pathname === '/board-data.js') {
+        return send(200, 'text/javascript; charset=utf-8', fs.existsSync(DATA) ? fs.readFileSync(DATA, 'utf8') : 'window.__TIDE({"sessions":[]});');
+      }
+      if (url.pathname.startsWith('/api/') && req.headers['x-tidewatch-token'] !== token) return json(403, { error: 'token' });
+      if (req.method === 'GET' && url.pathname === '/api/status') {
+        return json(200, { platform: process.platform, pet: petRunning(), settings: settings(), agents: agents() });
+      }
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', (c) => { body += c; if (body.length > 1e4) req.destroy(); });
+        req.on('end', () => {
+          try {
+            const input = body ? JSON.parse(body) : {};
+            if (url.pathname === '/api/pet') {
+              if (input.on) { const msg = pet(); return json(200, { ok: true, message: msg }); }
+              petStop(); return json(200, { ok: true });
+            }
+            if (url.pathname === '/api/notify') {
+              const cur = readJson(SETTINGS, {}); cur.notify = !!input.on;
+              writeAtomic(SETTINGS, JSON.stringify(cur, null, 2)); build();
+              return json(200, { ok: true, settings: settings() });
+            }
+            if (url.pathname === '/api/connect') { connect(String(input.agent)); return json(200, { ok: true }); }
+            json(404, { error: 'not found' });
+          } catch (e) { json(400, { error: e.message }); }
+        });
+        return;
+      }
+      json(404, { error: 'not found' });
+    } catch (e) { json(500, { error: e.message }); }
+  });
+  server.on('error', (e) => { console.error(`서버를 못 열었어요: ${e.message}`); process.exit(1); });
+  server.listen(PORT, '127.0.0.1', () => {
+    try { fs.writeFileSync(path.join(ROOT, 'server.pid'), String(process.pid)); } catch {}
+    console.log(`http://127.0.0.1:${PORT}/`);
+  });
 }
 
 /** 끝난 지 하루 넘은 세션, 소식 없이 3일 지난 세션은 build할 때 알아서 지운다 */
@@ -187,6 +317,7 @@ function pet() {
   if (process.platform !== 'win32') return '펫은 아직 Windows에서만 돼요.';
   if (!fs.existsSync(file)) return `${file}이 없어요. 설치 명령을 다시 실행해 주세요.`;
   build();
+  if (petRunning()) return '펫이 이미 떠 있어요.';
   spawn('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', file], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
   return '펫을 띄웠어요. 작업표시줄 위를 보세요.';
 }
@@ -204,7 +335,8 @@ function main() {
   switch (cmd ?? 'build') {
     case 'build': return console.log(build());
     case 'open': return console.log(open());
-    case 'app': return console.log(app());
+    case 'app': return app().then(console.log);
+    case 'serve': return serve();
     case 'pet': return console.log(pet());
     case 'path': return console.log(SESS);
     case 'notify': {
@@ -223,7 +355,7 @@ function main() {
       return console.log(build());
     case 'prune': return console.log(build());
   }
-  console.error('usage: tidewatch.mjs build | open | app | pet | path | remove <id> | prune | notify on|off|status|only <waiting,blocked,done>');
+  console.error('usage: tidewatch.mjs build | open | app | serve | pet | path | remove <id> | prune | notify on|off|status|only <waiting,blocked,done>');
   process.exit(1);
 }
 
@@ -236,6 +368,7 @@ var TEMPLATE = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#08111d;--card:#0f1b2b;--ink:#e8f0f7;--sub:#8a9bab;--line:#1d2c3f;--bot:#dfe9f2;--youbg:#3a2213;--err:#f87171;--errbg:#3a1414;--chip:#1a2738}}
 :root[data-theme=dark]{--bg:#08111d;--card:#0f1b2b;--ink:#e8f0f7;--sub:#8a9bab;--line:#1d2c3f;--bot:#dfe9f2;--youbg:#3a2213;--err:#f87171;--errbg:#3a1414;--chip:#1a2738}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:22px 24px 10px}
 .brand{display:flex;align-items:center;gap:10px}
@@ -303,6 +436,19 @@ html[data-size=l] .grid{zoom:1.18}
 .right{display:flex;gap:4px;align-items:center}
 .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);font-family:inherit;font-size:12px;font-weight:700;padding:6px 10px;border-radius:10px;cursor:pointer}
 .btn:hover{background:var(--chip)}
+.panel{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 24px 16px}
+.tg{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:99px;cursor:pointer}
+.tg i{width:28px;height:16px;border-radius:99px;background:var(--line);position:relative;transition:background .2s}
+.tg i:after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:left .2s}
+.tg.on i{background:#22c55e}.tg.on i:after{left:14px}
+.tg:disabled{opacity:.6;cursor:wait}
+.conn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:700;padding:5px 6px 5px 12px;border-radius:99px;min-height:32px}
+.conn .d{width:8px;height:8px;border-radius:50%;background:var(--sub)}
+.conn.ok .d{background:#22c55e}
+.conn small{color:var(--sub);font-weight:600;font-size:12px;padding-right:6px}
+.conn button{border:0;background:var(--ink);color:var(--card);font-family:inherit;font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;cursor:pointer}
+.hint2{padding:0 24px 14px;color:var(--sub);font-size:12px}
+@media (max-width:520px){.panel,.hint2{padding-left:16px;padding-right:16px}}
 .bell{font-size:12px;font-weight:700;color:var(--sub);padding:6px 4px;cursor:help}
 .badge{flex:none;font-size:12px;font-weight:800;color:#fff;background:var(--c);padding:3px 10px;border-radius:99px}
 .lbl{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--sub)}
@@ -373,6 +519,13 @@ html[data-size=l] .grid{zoom:1.18}
   </div>
 </header>
 <div class="sum" id="sum"></div>
+<div class="panel" id="panel" hidden>
+  <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
+  <button class="tg" id="notifyBtn" type="button"><i></i><span></span></button>
+  <span class="conn" id="conn-claude"></span>
+  <span class="conn" id="conn-codex"></span>
+</div>
+<div class="hint2" id="hint" hidden>펫·알림·연결 관리는 바탕화면의 Tidewatch 아이콘으로 열면 쓸 수 있어요</div>
 <div id="board"></div>
 <div class="empty" id="empty" hidden>아직 바다에 나간 세션이 없어요. Claude Code나 Codex에서 <code>$tidewatch</code> 또는 "타이드워치 켜줘"라고 해 보세요.</div>
 <script>
@@ -484,6 +637,27 @@ let last={sessions:[]};
 const hide=id=>{const s=last.sessions.find(x=>x.id===id);if(s)store.set('hide.'+id,s.mtime);render(last)};
 $('board').addEventListener('click',e=>{const x=e.target.closest('.x');if(x)hide(x.closest('.card').dataset.id)});
 $('clear').addEventListener('click',()=>{last.sessions.filter(s=>s.status==='done').forEach(s=>store.set('hide.'+s.id,s.mtime));render(last)});
+// ---- 앱 기능 (로컬 서버로 열었을 때만) ----
+const API=location.protocol.startsWith('http')&&window.TW_TOKEN;
+let status=null;
+async function api(p,body){const r=await fetch(p,{method:body?'POST':'GET',headers:{'x-tidewatch-token':window.TW_TOKEN,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+const NAMES={claude:'Claude Code',codex:'Codex'};
+function paintPanel(){
+  if(!status)return;
+  const pb=$('petBtn');pb.hidden=status.platform!=='win32';pb.classList.toggle('on',!!status.pet);pb.querySelector('span').textContent=status.pet?'펫 켜짐':'펫 꺼짐';
+  const nb=$('notifyBtn');const on=status.settings&&status.settings.notify!==false;nb.classList.toggle('on',on);nb.querySelector('span').textContent=on?'알림 켜짐':'알림 꺼짐';
+  for(const k of Object.keys(NAMES)){
+    const a=(status.agents||{})[k]||{};const el=$('conn-'+k);el.classList.toggle('ok',!!a.installed);
+    el.innerHTML='<i class="d"></i>'+NAMES[k]+' <small>'+(a.installed?(a.lastSeen?'연결됨 · '+ago(a.lastSeen)+' 활동':'연결됨 · 아직 카드 없음'):'연결 안 됨')+'</small>'+(a.installed?'':'<button data-agent="'+k+'">연결하기</button>');
+  }
+}
+async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
+if(API){
+  $('panel').hidden=false;$('bell').hidden=true;refreshStatus();setInterval(refreshStatus,5000);
+  $('petBtn').addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;try{await api('/api/pet',{on:!status.pet})}catch(err){b.title=err.message}setTimeout(async()=>{await refreshStatus();b.disabled=false},1500)});
+  $('notifyBtn').addEventListener('click',async()=>{try{await api('/api/notify',{on:!(status.settings&&status.settings.notify!==false)})}catch(err){}refreshStatus()});
+  $('panel').addEventListener('click',async e=>{const b=e.target.closest('button[data-agent]');if(!b)return;b.disabled=true;b.textContent='연결 중…';try{await api('/api/connect',{agent:b.dataset.agent})}catch(err){b.textContent='실패';b.title=err.message}refreshStatus()});
+}else{$('hint').hidden=false}
 window.__TIDE=render;
 render(__DATA__);
 setInterval(()=>{const s=document.createElement('script');s.src='board-data.js?t='+Date.now();s.onload=s.onerror=()=>s.remove();document.head.appendChild(s)},3000);

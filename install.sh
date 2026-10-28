@@ -38,6 +38,8 @@ install_to "$HOME/.agents/skills"          # Codex
 mkdir -p "$HOME/.tidewatch"
 cp "$SRC/scripts/tidewatch.mjs" "$HOME/.tidewatch/tidewatch.mjs"
 cp "$SRC/assets/tidewatch.png" "$HOME/.tidewatch/tidewatch.png"
+rm -rf "$HOME/.tidewatch/skill" && cp -R "$SRC" "$HOME/.tidewatch/skill"
+if [ -f "$HOME/.tidewatch/server.pid" ]; then kill "$(cat "$HOME/.tidewatch/server.pid")" 2>/dev/null || true; rm -f "$HOME/.tidewatch/server.pid"; fi
 PAGE="$(node "$HOME/.tidewatch/tidewatch.mjs" build)"
 if [ -n "$TMP" ]; then rm -rf "$TMP"; fi
 

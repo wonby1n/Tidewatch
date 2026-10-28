@@ -50,42 +50,37 @@ try {
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 } catch {}
 Copy-Item (Join-Path $Src 'scripts\pet.ps1') $Pet -Force
+# keep a copy of the skill so the app's "connect" button can install it for Claude Code / Codex
+$SkillCopy = Join-Path $Board 'skill'
+if (Test-Path $SkillCopy) { Remove-Item -Recurse -Force $SkillCopy }
+Copy-Item -Recurse $Src $SkillCopy
+# restart the local app server so the new version is used
+$ServerPid = Join-Path $Board 'server.pid'
+if (Test-Path $ServerPid) {
+  try { Stop-Process -Id ([int](Get-Content $ServerPid)) -Force -ErrorAction Stop } catch {}
+  Remove-Item $ServerPid -Force -ErrorAction SilentlyContinue
+}
 $Page = node (Join-Path $Board 'tidewatch.mjs') build
 if ($Tmp) { Remove-Item -Recurse -Force $Tmp }
 
-# Desktop shortcut: opens the board as a chromeless app window (Edge/Chrome --app)
-$Browser = @(
-  "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
-  "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
-  "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
-  "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
-) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+# Desktop shortcut: opens Tidewatch (local app server + chromeless window). Pet, notifications and
+# Claude Code / Codex connections are all controlled inside the app.
+$NodeExe = (Get-Command node).Source
 try {
   $Desktop = [Environment]::GetFolderPath('Desktop')
   if (-not $Desktop) { throw 'no Desktop folder' }
   $Link = Join-Path $Desktop 'Tidewatch.lnk'
   $Shell = New-Object -ComObject WScript.Shell
   $Shortcut = $Shell.CreateShortcut($Link)
-  if ($Browser) {
-    $Shortcut.TargetPath = $Browser
-    $Shortcut.Arguments = "--app=`"$(([Uri]$Page).AbsoluteUri)`" --window-size=460,940"
-  } else {
-    $Shortcut.TargetPath = $Page
-  }
+  $Shortcut.TargetPath = $NodeExe
+  $Shortcut.Arguments = "`"$(Join-Path $Board 'tidewatch.mjs')`" app"
+  $Shortcut.WindowStyle = 7
   $Shortcut.IconLocation = "$Icon,0"
   $Shortcut.Description = 'Tidewatch - AI session board'
   $Shortcut.Save()
   Write-Host "  + Desktop shortcut: $Link"
-  # Pet shortcut: a little bot that walks on top of the taskbar
-  $PetLink = Join-Path $Desktop 'Tidewatch Pet.lnk'
-  $P = $Shell.CreateShortcut($PetLink)
-  $P.TargetPath = 'powershell.exe'
-  $P.Arguments = "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Pet`""
-  $P.WindowStyle = 7
-  $P.IconLocation = "$Icon,0"
-  $P.Description = 'Tidewatch pet'
-  $P.Save()
-  Write-Host "  + Desktop shortcut: $PetLink"
+  $OldPet = Join-Path $Desktop 'Tidewatch Pet.lnk'
+  if (Test-Path $OldPet) { Remove-Item $OldPet -Force }
 } catch {
   Write-Host "  (Skipped the desktop shortcut: $($_.Exception.Message))"
   Write-Host "  Open it any time with: node `"$Board\tidewatch.mjs`" app"
@@ -93,9 +88,9 @@ try {
 
 try {
   Start-Process -FilePath 'powershell.exe' -ArgumentList "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Pet`"" -WindowStyle Hidden
-  Write-Host '  + Pet started (look above the taskbar)'
+  Write-Host '  + Pet started (turn it on/off inside the Tidewatch app)'
 } catch { Write-Host "  (Could not start the pet: $($_.Exception.Message))" }
 
 Write-Host ''
-Write-Host "Done! Open the Tidewatch icon on your desktop and keep the board open." -ForegroundColor Green
+Write-Host "Done! Open the Tidewatch icon on your desktop." -ForegroundColor Green
 Write-Host 'Then tell Claude Code or Codex: "turn on tidewatch".'

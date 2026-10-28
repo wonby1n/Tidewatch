@@ -8,6 +8,10 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 $mutex = New-Object System.Threading.Mutex($false, 'Local\TidewatchPet')
 if (-not $mutex.WaitOne(0)) { return }
 
+# 앱이 펫이 떠 있는지 알 수 있게 번호표를 남긴다
+$pidFile = Join-Path $Dir 'pet.pid'
+try { Set-Content -Path $pidFile -Value $PID -Encoding ASCII } catch {}
+
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -261,5 +265,5 @@ $poll.Interval = [TimeSpan]::FromSeconds(2)
 $poll.Add_Tick({ Refresh })
 
 $win.Add_Loaded({ Refresh; $anim.Start(); $poll.Start() })
-$win.Add_Closed({ $anim.Stop(); $poll.Stop(); $mutex.ReleaseMutex() })
+$win.Add_Closed({ $anim.Stop(); $poll.Stop(); Remove-Item $pidFile -Force -ErrorAction SilentlyContinue; $mutex.ReleaseMutex() })
 [void]$win.ShowDialog()

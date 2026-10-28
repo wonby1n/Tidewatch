@@ -126,4 +126,42 @@ check('notifications fire once when a session becomes waiting, and can be turned
   run('remove', 'ping');
 });
 
+// ---- 로컬 서버 ----
+{
+  const { spawn } = await import('node:child_process');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-home-'));
+  const port = String(47000 + Math.floor(Math.random() * 900));
+  fs.mkdirSync(path.join(dir, 'skill'), { recursive: true });
+  fs.copyFileSync(path.join(repo, 'skills/tidewatch/SKILL.md'), path.join(dir, 'skill', 'SKILL.md'));
+  const srv = spawn(process.execPath, [script, 'serve'], { env: { ...env, HOME: home, USERPROFILE: home, TIDEWATCH_PORT: port, TIDEWATCH_NO_NOTIFY: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  await new Promise((resolve) => srv.stdout.once('data', resolve));
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    const page = await (await fetch(base + '/')).text();
+    const token = JSON.parse(page.match(/window\.TW_TOKEN=("[0-9a-f]+")/)[1]);
+    const call = (p, body, t = token) => fetch(base + p, { method: body ? 'POST' : 'GET', headers: { 'x-tidewatch-token': t, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    check('the app server hands the page a token and refuses API calls without it', () => {});
+    assert.equal((await call('/api/status', null, 'nope')).status, 403);
+    const { request } = await import('node:http');
+    const spoof = await new Promise((resolve) => request({ host: '127.0.0.1', port, path: '/', headers: { host: 'evil.example:' + port } }, (r) => resolve(r.statusCode)).end());
+    assert.equal(spoof, 403);
+    let st = await (await call('/api/status')).json();
+    check('status reports Claude Code and Codex as not connected in an empty home', () => {
+      assert.equal(st.agents.claude.installed, false);
+      assert.equal(st.agents.codex.installed, false);
+    });
+    assert.equal((await call('/api/connect', { agent: 'claude' })).status, 200);
+    st = await (await call('/api/status')).json();
+    check('connect installs the skill for Claude Code and the app sees it', () => {
+      assert.equal(st.agents.claude.installed, true);
+      assert.ok(fs.existsSync(path.join(home, '.claude/skills/tidewatch/SKILL.md')));
+      assert.ok(st.agents.codex.lastSeen > 0);
+    });
+    await call('/api/notify', { on: false });
+    st = await (await call('/api/status')).json();
+    check('notifications can be switched off from the app', () => assert.equal(st.settings.notify, false));
+    await call('/api/notify', { on: true });
+  } finally { srv.kill(); }
+}
+
 console.log(`${passed} checks passed · board: ${path.join(dir, 'tidewatch.html')}`);
