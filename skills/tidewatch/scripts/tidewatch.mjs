@@ -71,6 +71,7 @@ function load(now) {
 function build() {
   ensureDirs();
   const now = Date.now();
+  autoPrune(now);
   const json = JSON.stringify({ sessions: load(now), builtAt: now }).replace(/</g, '\\u003c');
   writeAtomic(DATA, `window.__TIDE(${json});`);
   writeAtomic(PAGE, TEMPLATE.replace('__DATA__', () => json));
@@ -112,6 +113,17 @@ function app() {
   return file;
 }
 
+/** 끝난 지 하루 넘은 세션, 소식 없이 3일 지난 세션은 build할 때 알아서 지운다 */
+function autoPrune(now) {
+  for (const f of fs.readdirSync(SESS)) {
+    if (!f.endsWith('.json')) continue;
+    const p = path.join(SESS, f);
+    const age = now - fs.statSync(p).mtimeMs;
+    const s = readJson(p, null);
+    if ((s?.status === 'done' && age > 864e5) || age > 3 * 864e5) remove(f.slice(0, -5));
+  }
+}
+
 function remove(id) {
   const safe = path.basename(id);
   fs.rmSync(path.join(SESS, `${safe}.json`), { force: true });
@@ -130,14 +142,7 @@ function main() {
       if (!arg) break;
       remove(arg);
       return console.log(build());
-    case 'prune': {
-      const now = Date.now();
-      for (const s of load(now)) {
-        const age = now - s.mtime;
-        if ((s.status === 'done' && age > 864e5) || age > 3 * 864e5) remove(s.id);
-      }
-      return console.log(build());
-    }
+    case 'prune': return console.log(build());
   }
   console.error('usage: tidewatch.mjs build | open | app | path | remove <id> | prune');
   process.exit(1);
@@ -149,7 +154,8 @@ var TEMPLATE = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <link rel="icon" href="data:image/png;base64,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">
 <style>
 :root{--bg:#e9f0f5;--card:#fff;--ink:#14202b;--sub:#5d6b78;--line:#d6e0e8;--bot:#fff;--you:#ff7a3d;--youbg:#fff1e8;--err:#dc2626;--errbg:#fdecec;--chip:#eef2f6}
-@media (prefers-color-scheme:dark){:root{--bg:#08111d;--card:#0f1b2b;--ink:#e8f0f7;--sub:#8a9bab;--line:#1d2c3f;--bot:#dfe9f2;--youbg:#3a2213;--err:#f87171;--errbg:#3a1414;--chip:#1a2738}}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#08111d;--card:#0f1b2b;--ink:#e8f0f7;--sub:#8a9bab;--line:#1d2c3f;--bot:#dfe9f2;--youbg:#3a2213;--err:#f87171;--errbg:#3a1414;--chip:#1a2738}}
+:root[data-theme=dark]{--bg:#08111d;--card:#0f1b2b;--ink:#e8f0f7;--sub:#8a9bab;--line:#1d2c3f;--bot:#dfe9f2;--youbg:#3a2213;--err:#f87171;--errbg:#3a1414;--chip:#1a2738}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:22px 24px 10px}
@@ -158,11 +164,21 @@ header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;
 h1{margin:0;font-size:24px;font-weight:900;letter-spacing:.14em}
 .tag{color:var(--sub);font-size:13px;margin:0}
 .meta{color:var(--sub);font-size:12px}
+.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:2px}
+.seg button{border:0;background:none;color:var(--sub);font-family:inherit;font-size:12px;font-weight:700;padding:6px 9px;border-radius:8px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--card)}
+.hint{color:var(--sub);font-size:12px;align-self:center}
+html[data-size=s] .grid{zoom:.82}
+html[data-size=l] .grid{zoom:1.18}
 .sum{display:flex;gap:8px;flex-wrap:wrap;padding:0 24px 16px}
 .pill{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:700}
 .pill i{width:8px;height:8px;border-radius:50%;background:var(--c)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;padding:0 24px 32px}
-@media (max-width:520px){.grid{grid-template-columns:1fr;padding:0 16px 24px}header,.sum{padding-left:16px;padding-right:16px}}
+.group{padding:0 24px 18px}
+.group h2{display:flex;align-items:center;gap:8px;margin:4px 0 10px;font-size:14px;font-weight:800}
+.group h2 small{font-size:12px;color:var(--sub);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+@media (max-width:520px){.grid{grid-template-columns:1fr}.group,header,.sum{padding-left:16px;padding-right:16px}}
 .empty{padding:40px 24px;color:var(--sub)}
 .empty code{background:var(--chip);padding:2px 6px;border-radius:6px}
 
@@ -178,7 +194,8 @@ h1{margin:0;font-size:24px;font-weight:900;letter-spacing:.14em}
 .bot{position:absolute;right:14px;bottom:calc(var(--lv) - 20px);width:48px;height:48px;color:#14202b;transition:bottom 1.8s cubic-bezier(.25,.8,.25,1)}
 .bot svg{width:100%;height:100%;animation:bob 2.6s ease-in-out infinite;overflow:visible}
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-5px) rotate(5deg)}}
-.bot .body{fill:var(--bot)}
+.bot{z-index:2;cursor:pointer}
+.bot .body{fill:var(--botc,var(--bot));transition:fill .3s}
 .bot .ant{fill:var(--c);animation:glow 1.4s ease-in-out infinite}
 @keyframes glow{50%{opacity:.35}}
 .bot .eyes{transform-origin:24px 23px;animation:blink 4s infinite}
@@ -203,6 +220,11 @@ h1{margin:0;font-size:24px;font-weight:900;letter-spacing:.14em}
 .proj{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--sub);font-weight:700;flex-wrap:wrap}
 .agent{font-size:11px;font-weight:800;padding:1px 7px;border-radius:6px;background:var(--chip);color:var(--ink)}
 .title{font-size:17px;font-weight:800;margin-top:2px}
+.x{flex:none;width:24px;height:24px;border:0;border-radius:8px;background:none;color:var(--sub);font-size:15px;line-height:24px;cursor:pointer;opacity:.45}
+.x:hover{opacity:1;background:var(--chip)}
+.right{display:flex;gap:4px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);font-family:inherit;font-size:12px;font-weight:700;padding:6px 10px;border-radius:10px;cursor:pointer}
+.btn:hover{background:var(--chip)}
 .badge{flex:none;font-size:12px;font-weight:800;color:#fff;background:var(--c);padding:3px 10px;border-radius:99px}
 .lbl{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--sub)}
 .you{margin-top:12px;background:var(--youbg);border-left:4px solid var(--you);padding:10px 12px;border-radius:10px;font-weight:700}
@@ -236,14 +258,23 @@ details li:before{content:"·"}
     <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#3b82f6" opacity=".15"/><path d="M6 28q4.5-5 9 0t9 0 9 0 9 0v8a14 14 0 0 1-36 0z" fill="#3b82f6"/><circle cx="24" cy="24" r="21" fill="none" stroke="#3b82f6" stroke-width="2.5"/></svg>
     <div><h1>TIDEWATCH</h1><p class="tag">물이 차오를수록 끝이 가까워요</p></div>
   </div>
-  <span class="meta" id="meta"></span>
+  <div class="ctrl">
+    <div class="seg" id="size" role="group" aria-label="크기"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button></div>
+    <div class="seg" id="theme" role="group" aria-label="테마"><button data-v="auto">자동</button><button data-v="light">라이트</button><button data-v="dark">다크</button></div>
+    <button class="btn" id="clear">끝난 카드 정리</button>
+    <span class="meta" id="meta"></span>
+  </div>
 </header>
 <div class="sum" id="sum"></div>
-<div class="grid" id="grid"></div>
+<div id="board"></div>
 <div class="empty" id="empty" hidden>아직 바다에 나간 세션이 없어요. Claude Code나 Codex에서 <code>$tidewatch</code> 또는 "타이드워치 켜줘"라고 해 보세요.</div>
 <script>
 const ST={waiting:['너 차례','#ff7a3d',0,'?'],blocked:['막힘','#ef4444',1,'!'],working:['작업 중','#3b82f6',2,''],done:['끝','#22c55e',3,'✓']};
 const AGENT={claude:'Claude',codex:'Codex'};
+const BOTC=['#ffffff','#ffd6a5','#caffbf','#a0e7ff','#cdb4ff','#ffc6e5','#fff3a0','#ffb3b3'];
+const store={get(k,d){try{const v=localStorage.getItem('tw.'+k);return v===null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem('tw.'+k,v)}catch(e){}}};
+const hash=s=>{let h=7;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)};
+const botColor=id=>{const v=store.get('bot.'+id,null);return v===null?hash(id)%BOTC.length:(+v||0)%BOTC.length};
 const BOT='<svg viewBox="0 0 48 48"><line x1="24" y1="5" x2="24" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle class="ant" cx="24" cy="5" r="3.2"/>'
  +'<rect class="body" x="8" y="12" width="32" height="23" rx="9" stroke="currentColor" stroke-width="2.5"/>'
  +'<g class="eyes" fill="currentColor"><circle cx="18" cy="23" r="3.2"/><circle cx="30" cy="23" r="3.2"/></g>'
@@ -265,7 +296,9 @@ function stepTime(x,t){
 }
 function card(id){
   const el=document.createElement('section');el.dataset.id=id;el.className='card';
-  el.innerHTML='<div class="sea"><div class="water">'+WAVE+'</div></div><div class="bot">'+BOT+'<div class="bubble"></div></div><div class="content"></div>';
+  el.innerHTML='<div class="sea"><div class="water">'+WAVE+'</div></div><div class="bot" title="눌러서 봇 색 바꾸기">'+BOT+'<div class="bubble"></div></div><div class="content"></div>';
+  el.style.setProperty('--botc',BOTC[botColor(id)]);
+  el.querySelector('.bot').addEventListener('click',()=>{const n=(botColor(id)+1)%BOTC.length;store.set('bot.'+id,n);el.style.setProperty('--botc',BOTC[n])});
   return el;
 }
 function fill(el,s){
@@ -282,7 +315,7 @@ function fill(el,s){
   el.querySelector('.bubble').textContent=sleep?'z':mark;
   const agent=s.agent?'<span class="agent">'+esc(AGENT[String(s.agent).toLowerCase()]||s.agent)+'</span>':'';
   const err=s.error&&(s.error.message||s.error.where);
-  const html='<div class="top"><div><div class="proj">'+agent+esc(s.project)+'</div><div class="title">'+esc(s.title||s.id)+'</div></div><span class="badge">'+label+'</span></div>'
+  const html='<div class="top"><div><div class="proj">'+agent+'</div><div class="title">'+esc(s.title||s.id)+'</div></div><span class="right"><span class="badge">'+label+'</span><button class="x" title="이 카드 지우기" aria-label="이 카드 지우기">✕</button></span></div>'
    +(s.needsYou?'<div class="you"><span class="lbl">네가 할 일</span>'+esc(s.needsYou)+'</div>':'')
    +(err?'<div class="err"><span class="lbl">어디서 터졌나</span>'+(s.error.where?'<code>'+esc(s.error.where)+'</code>':'')+(s.error.message?'<pre>'+esc(s.error.message)+'</pre>':'')+'</div>':'')
    +(s.now?'<p class="now"><span class="lbl">지금</span>'+esc(s.now)+'</p>':'')
@@ -297,22 +330,45 @@ function fill(el,s){
   }
 }
 function render(D){
-  const ss=D.sessions.map(s=>({...s,st:ST[s.status]?s.status:'working'})).sort((a,b)=>ST[a.st][2]-ST[b.st][2]||b.mtime-a.mtime);
-  const grid=$('grid');const seen=new Set();
-  ss.forEach((s,i)=>{
-    let el=[...grid.children].find(c=>c.dataset.id===s.id);
-    if(!el){el=card(s.id);el._new=true}
-    if(grid.children[i]!==el)grid.insertBefore(el,grid.children[i]||null);
-    fill(el,s);seen.add(s.id);
-  });
-  [...grid.children].forEach(c=>{if(!seen.has(c.dataset.id))c.remove()});
+  last=D;
+  const ss=D.sessions.filter(s=>!(+store.get('hide.'+s.id,0)>=s.mtime)).map(s=>({...s,st:ST[s.status]?s.status:'working'})).sort((a,b)=>ST[a.st][2]-ST[b.st][2]||b.mtime-a.mtime);
+  // 같은 프로젝트의 세션은 한 묶음으로. 묶음 순서는 그 안에서 가장 급한 카드 기준
+  const groups=new Map();
+  for(const s of ss){const k=String(s.project||'기타');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(s)}
+  const board=$('board');const cards=new Map([...board.querySelectorAll('.card')].map(c=>[c.dataset.id,c]));
+  const seenG=new Set();let gi=0;
+  for(const [name,list] of groups){
+    let g=[...board.children].find(x=>x.dataset.project===name);
+    if(!g){g=document.createElement('section');g.className='group';g.dataset.project=name;g.innerHTML='<h2><span></span><small></small></h2><div class="grid"></div>'}
+    if(board.children[gi]!==g)board.insertBefore(g,board.children[gi]||null);
+    g.querySelector('h2 span').textContent=name;
+    g.querySelector('h2 small').textContent=list.length>1?'세션 '+list.length+'개':'';
+    const grid=g.querySelector('.grid');
+    list.forEach((s,i)=>{
+      let el=cards.get(s.id);
+      if(!el){el=card(s.id);el._new=true}
+      if(grid.children[i]!==el)grid.insertBefore(el,grid.children[i]||null);
+      fill(el,s);cards.delete(s.id);
+    });
+    [...grid.children].slice(list.length).forEach(c=>c.remove());
+    seenG.add(name);gi++;
+  }
+  cards.forEach(c=>c.remove());
+  [...board.children].forEach(g=>{if(!seenG.has(g.dataset.project))g.remove()});
   $('empty').hidden=ss.length>0;
   const n=k=>ss.filter(s=>s.st===k).length;
-  $('sum').innerHTML=Object.entries(ST).map(([k,v])=>'<span class="pill" style="--c:'+v[1]+'"><i></i>'+v[0]+' '+n(k)+'</span>').join('');
+  $('sum').innerHTML=Object.entries(ST).map(([k,v])=>'<span class="pill" style="--c:'+v[1]+'"><i></i>'+v[0]+' '+n(k)+'</span>').join('')+(ss.length?'<span class="hint">봇을 누르면 색이 바뀌어요</span>':'');
   const need=n('waiting')+n('blocked');
   document.title=(need?'('+need+') ':'')+'Tidewatch';
   $('meta').textContent='실시간 · '+new Date().toLocaleTimeString('ko-KR');
 }
+function seg(id,key,def,apply){const g=$(id);const set=v=>{store.set(key,v);apply(v);g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)))};g.addEventListener('click',e=>{const b=e.target.closest('button');if(b)set(b.dataset.v)});set(store.get(key,def))}
+seg('size','size','m',v=>{document.documentElement.dataset.size=v});
+seg('theme','theme','auto',v=>{if(v==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=v});
+let last={sessions:[]};
+const hide=id=>{const s=last.sessions.find(x=>x.id===id);if(s)store.set('hide.'+id,s.mtime);render(last)};
+$('board').addEventListener('click',e=>{const x=e.target.closest('.x');if(x)hide(x.closest('.card').dataset.id)});
+$('clear').addEventListener('click',()=>{last.sessions.filter(s=>s.status==='done').forEach(s=>store.set('hide.'+s.id,s.mtime));render(last)});
 window.__TIDE=render;
 render(__DATA__);
 setInterval(()=>{const s=document.createElement('script');s.src='board-data.js?t='+Date.now();s.onload=s.onerror=()=>s.remove();document.head.appendChild(s)},3000);

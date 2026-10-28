@@ -87,4 +87,15 @@ check('script-breaking text stays inside the data', () => {
   run('remove', 'xss');
 });
 
+
+check('finished sessions older than a day are cleaned up on build', () => {
+  const p = path.join(sessions, 'old-done.json');
+  fs.writeFileSync(p, JSON.stringify({ title: 'old', status: 'done' }));
+  const day = new Date(Date.now() - 25 * 36e5);
+  fs.utimesSync(p, day, day);
+  run('build');
+  assert.ok(!fs.existsSync(p));
+  assert.ok(fs.existsSync(path.join(sessions, 'trendot-cards.json')));
+});
+
 console.log(`${passed} checks passed · board: ${path.join(dir, 'tidewatch.html')}`);

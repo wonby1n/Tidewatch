@@ -14,13 +14,17 @@ description: Tidewatch — 여러 Claude Code·Codex 세션의 진행 상황을 
 ## 1. 준비 (세션마다 처음 한 번)
 
 1. `~/.tidewatch/tidewatch.mjs`가 있는지 확인한다. 없거나 두 번째 줄이 이 스킬 폴더의 `scripts/tidewatch.mjs` 두 번째 줄(`// Tidewatch v3 …`)과 다르면, `scripts/tidewatch.mjs`를 `~/.tidewatch/tidewatch.mjs`로 복사한다. 홈 경로는 `node -e "console.log(require('os').homedir())"`로 확인한다.
-2. 세션 id를 정한다: `<프로젝트폴더명>-<작업을 나타내는 짧은 영문 slug>` (예: `pickcase-backup-zip`). 영문 소문자, 숫자, `-`만 쓴다. **세션이 끝날 때까지 같은 id를 쓴다.** 같은 이름의 파일이 이미 있고 다른 작업이면 뒤에 `-2`를 붙인다.
+2. 세션 id를 정한다: `<프로젝트폴더명>-<agent>-<영문 소문자·숫자 4글자>` (예: `pickcase-claude-k3f9`). 마지막 4글자는 처음 한 번 무작위로 정한다. 영문 소문자, 숫자, `-`만 쓴다.
+   - **세션 1개 = 카드 1장.** 이 세션이 끝날 때까지 같은 id, 같은 파일만 쓴다. 같은 세션에서 사용자가 새 일을 맡기면 새 카드를 만들지 않고 이 카드의 `title`·`goal`·`steps`를 새 일로 바꾸고, 끝난 일은 `log` 맨 위에 `✓ <끝난 일> — <결과 한 줄>`로 남긴다.
+   - 같은 프로젝트에서 세션을 여러 개 돌리면 카드는 세션마다 하나씩이고, 현황판이 `project` 이름으로 알아서 묶어 보여준다. `project`는 프로젝트 폴더 이름을 그대로 쓴다.
 3. 아래 형식으로 `~/.tidewatch/sessions/<id>.json`을 쓰고 `node ~/.tidewatch/tidewatch.mjs build`를 실행한다.
 4. 이 세션에서 처음으로 보드를 만들었고 사용자가 아직 현황판을 안 열었을 것 같으면 `node ~/.tidewatch/tidewatch.mjs app`으로 현황판 창을 한 번 띄운다 (주소창 없는 앱 창, 브라우저를 못 찾으면 기본 브라우저로 열림). 이미 열려 있으면 다시 열지 않는다. 열린 창이 알아서 갱신된다. 사용자는 바탕화면의 Tidewatch 아이콘으로도 열 수 있다.
 
 **Codex 샌드박스**: `~/.tidewatch`는 작업 폴더 밖이라 기본 샌드박스에서 쓰기가 막힐 수 있다. 막히면 사용자에게 승인을 요청하거나, `~/.codex/config.toml`의 `[sandbox_workspace_write]`의 `writable_roots`에 `~/.tidewatch`의 절대 경로를 추가하라고 안내한다. 승인이 안 되면 보드 갱신은 건너뛰고 작업은 계속한다.
 
 ## 2. 세션 파일 형식
+
+파일 이름은 `<id>.json` (예: `pickcase-claude-k3f9.json`).
 
 ```json
 {
@@ -55,6 +59,18 @@ description: Tidewatch — 여러 Claude Code·Codex 세션의 진행 상황을 
 - 시간은 넣지 않는다. 스크립트가 build할 때마다 단계 상태 변화를 기록해서 "4분 걸림", "2분째" 같은 시간을 계산하고, 파일 수정 시간으로 "몇 분 전"을 표시한다.
 - 진행률(물 높이)은 `done`·`skipped` 단계의 비율이다 (`status`가 `done`이면 100%). 단계를 실제로 끝냈을 때만 `done`으로 바꾼다.
 
+### 100%(끝)의 기준
+
+`status: "done"`은 아래 세 가지가 **모두** 맞을 때만 쓴다.
+
+1. 모든 단계가 `done` 또는 `skipped`다.
+2. 결과를 직접 확인했다. 단계에 맞는 확인을 한다: 코드면 테스트·빌드·실행, 문서면 파일을 열어 봄, 배포면 주소에 접속해 봄.
+3. 사용자가 해야 할 일이 남지 않았다.
+
+- 마지막 단계가 사용자가 직접 해야 하는 일(설치 명령 실행, 실기기 확인, 승인, 결정)이면 그 단계를 `doing`으로 두고 `status: "waiting"` + `needsYou`로 끝낸다. 사용자가 "했어", "됐어"라고 하면 그 단계를 `done`으로, `status`를 `done`으로 바꾼다.
+- 사용자가 "그건 안 해도 돼"라고 하면 그 단계는 `skipped`다.
+- 확인하다 문제가 나오면 `done`이 아니라 `error` 단계를 추가하거나 되돌린다.
+
 ## 3. 언제 갱신하나
 
 갱신하려면 세션 파일을 통째로 다시 쓰고 `build`를 실행한다. 도구 호출 두 번으로 끝나게 짧게 한다.
@@ -69,9 +85,10 @@ description: Tidewatch — 여러 Claude Code·Codex 세션의 진행 상황을 
 
 ## 4. 정리
 
-- 사용자가 "보드 정리해줘"라고 하면 `node ~/.tidewatch/tidewatch.mjs prune`을 실행한다 (끝난 지 하루 넘은 세션과 3일 동안 안 바뀐 세션을 지운다).
-- 특정 세션을 지울 땐 `node ~/.tidewatch/tidewatch.mjs remove <id>`를 실행한다.
-- 다른 세션의 파일은 고치거나 지우지 않는다. `prune`과 `remove`는 사용자가 요청할 때만 쓴다.
+- 사용자는 현황판에서 카드의 ✕나 "끝난 카드 정리" 버튼으로 카드를 지울 수 있다. 지운 세션이 다시 갱신되면 카드가 다시 뜬다.
+- `build`는 끝난 지 하루 넘은 세션과 3일 동안 안 바뀐 세션의 파일을 알아서 지운다.
+- 사용자가 터미널로 지워 달라고 하면 `node ~/.tidewatch/tidewatch.mjs remove <id>`를 쓴다.
+- 다른 세션의 파일은 고치거나 지우지 않는다.
 
 ## 5. 주의
 
