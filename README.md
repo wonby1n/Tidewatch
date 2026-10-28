@@ -21,7 +21,19 @@ Each card fills with water as the work moves forward.
 
 Tidewatch now includes a standalone Electron desktop app. It opens its own window without launching Edge or Chrome. The board and compact view run inside the app; window size and position are remembered, and opening it again focuses the existing instance. The local backend stops when you close the last app window.
 
-Build and install from source (Node.js and npm required):
+**[Download Tidewatch-Setup.exe](https://github.com/wonby1n/Tidewatch/releases/latest/download/Tidewatch-Setup.exe)** · [All releases and checksums](https://github.com/wonby1n/Tidewatch/releases/latest)
+
+Run the installer, launch Tidewatch, connect your agent with **연결하기** (Connect), and start a new coding session with `/tidewatch` or `$tidewatch`. No source build is needed.
+
+Before installing:
+- Windows x64 only; ARM and 32-bit Windows have not been validated.
+- The installer is unsigned, so Windows may show a warning. Verify the official source and SHA-256; do not disable security protections.
+- Node.js is still needed for agent status updates. The installer does not install Node.js or the coding agents.
+- No automatic updates. Uninstalling can leave local sessions, settings, and skills behind.
+
+[Installation, privacy, limitations, checksums, and troubleshooting](docs/windows-install.md)
+
+Build and install from source instead (Node.js and npm required):
 
 ```powershell
 git clone https://github.com/wonby1n/Tidewatch.git

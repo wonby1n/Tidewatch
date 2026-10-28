@@ -18,7 +18,19 @@ Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으
 
 Edge·Chrome을 실행하지 않고 자체 창으로 열리는 Electron 앱을 추가했습니다. 현황판과 메모장 모드를 앱 창으로 열고, 창 크기와 위치를 기억합니다. 다시 실행하면 기존 앱 창으로 돌아오며, 마지막 창을 닫으면 앱이 시작한 로컬 서버도 종료됩니다.
 
-소스에서 빌드·설치하려면 Node.js와 npm이 필요합니다.
+**[Tidewatch-Setup.exe 다운로드](https://github.com/wonby1n/Tidewatch/releases/latest/download/Tidewatch-Setup.exe)** · [릴리스와 파일 검증값](https://github.com/wonby1n/Tidewatch/releases/latest)
+
+설치 파일 실행 → Tidewatch 열기 → 에이전트 **연결하기** → 새 세션에서 `/tidewatch` 또는 `$tidewatch` 사용. 앱을 직접 빌드할 필요는 없습니다.
+
+설치 전 확인:
+- Windows x64용입니다. ARM·32비트 Windows는 검증하지 않았습니다.
+- 코드 서명되지 않은 개인 배포 파일이므로 Windows에서 경고할 수 있습니다. 공식 배포처와 SHA-256을 확인하고, 보안 기능을 끄지 마세요.
+- AI의 상태 갱신에는 Node.js가 필요합니다. 설치 파일이 Node.js나 AI 코딩 도구까지 설치하지는 않습니다.
+- 자동 업데이트는 없습니다. 앱을 제거해도 로컬 세션·설정·스킬이 남을 수 있습니다.
+
+[상세 설치 방법·저장 위치·유의사항·문제 해결](docs/windows-install.md)
+
+소스에서 직접 빌드·설치하려면 Node.js와 npm이 필요합니다.
 
 ```powershell
 git clone https://github.com/wonby1n/Tidewatch.git

@@ -75,6 +75,9 @@ async function freePort() {
 async function start() {
   app.setAppUserModelId('io.github.wonby1n.tidewatch');
   fs.mkdirSync(root, { recursive: true });
+  if (app.isPackaged && !smoke) {
+    fs.writeFileSync(path.join(root, 'desktop.json'), JSON.stringify({ executable: process.execPath }));
+  }
   // The connect button needs a bundled skill, even when Node.js is not installed.
   fs.cpSync(source, path.join(root, 'skill'), { recursive: true });
   for (const name of ['pet.ps1', 'tidewatch.mjs']) fs.copyFileSync(path.join(source, 'scripts', name), path.join(root, name));
