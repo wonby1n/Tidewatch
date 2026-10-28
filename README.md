@@ -64,6 +64,8 @@ If the full board feels like too much, open a small sticky-note window. Each ses
 
 A small bot walks along the top of your taskbar and tells you how things are going. It starts after installing and you can switch it on or off from the app.
 
+<p align="center"><img src="docs/pet.gif" alt="The pet above the taskbar, hopping because a session is waiting for you" width="375"></p>
+
 - A speech bubble shows the most urgent thing first, e.g. `너 차례 2 · Pickcase backup` (your turn: 2)
 - It walks while sessions are working, hops in place when it is your turn, shivers when something is blocked, smiles when everything is done, and dozes when things go quiet
 - Hover for the full session list; click to open the sticky-note view
