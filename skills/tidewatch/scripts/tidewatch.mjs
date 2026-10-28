@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v10 — https://github.com/wonby1n/tidewatch
+// Tidewatch v11 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -234,7 +234,7 @@ function serve() {
       }
       if (url.pathname.startsWith('/api/') && req.headers['x-tidewatch-token'] !== token) return json(403, { error: 'token' });
       if (req.method === 'GET' && url.pathname === '/api/status') {
-        return json(200, { platform: process.platform, pet: petRunning(), settings: settings(), agents: agents(), usage: usage.snapshot(), activity: readJson(path.join(ROOT, 'activity.json'), { events: [] }).events, linkedSessions: Object.keys(readJson(path.join(ROOT, 'session-links.json'), {})) });
+        return json(200, { platform: process.platform, pet: petRunning(), settings: settings(), agents: agents(), usage: usage.snapshot(), activity: readJson(path.join(ROOT, 'activity.json'), { events: [] }).events, notification: readJson(path.join(ROOT,'notification-status.json'),null), linkedSessions: Object.keys(readJson(path.join(ROOT, 'session-links.json'), {})) });
       }
       if (req.method === 'POST') {
         let body = '';
@@ -644,6 +644,7 @@ dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-r
     <div class="panel" id="panel" hidden>
       <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
       <button class="tg" id="notifyBtn" type="button"><i></i><span></span></button>
+      <button class="btn" id="notificationTest" type="button" hidden>알림 테스트</button><span class="usage-note" id="notificationStatus" role="status"></span>
       <span class="conn" id="conn-claude"></span><span class="conn" id="conn-codex"></span>
     </div>
     </div></details>
@@ -881,6 +882,7 @@ $('linkCancel').addEventListener('click',()=>$('linkDialog').close());
 $('linkForm').addEventListener('submit',async e=>{e.preventDefault();if(!window.tidewatch)return;try{await window.tidewatch.saveLink(linkingSession,$('sessionLink').value.trim());$('linkDialog').close();await refreshStatus();render(last);actionMessage('이 카드에 Claude 대화 링크를 연결했습니다.')}catch(err){$('linkError').textContent=err.message}});
 window.addEventListener('tidewatch-focus',e=>{const card=[...document.querySelectorAll('.card')].find(c=>c.dataset.id===e.detail);if(card){card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('session-focus');setTimeout(()=>card.classList.remove('session-focus'),3000)}});
 async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
+function paintNotificationStatus(){const s=status?.notification;const labels={requested:'Windows에 알림 요청 중',delivered:'Windows 전달 완료 · 팝업은 Windows 알림 설정에 따라 표시됩니다',failed:'알림 전달 실패: '+(s?.error||'원인 확인 필요'),unsupported:'이 환경은 시스템 알림을 지원하지 않습니다',unconfirmed:'Windows 전달 확인을 받지 못했습니다'};$('notificationStatus').textContent=s?(labels[s.outcome]||'')+' · '+ago(s.at):'상태가 바뀌면 알립니다. 앱을 켤 때 과거 알림은 다시 보내지 않습니다.'}
 let projectState={projects:[]}, githubRepos=[], repoPage=0, repoMore=false, projectPending=false, projectPoll=null;
 function paintProjects(){
   $('projectList').innerHTML=projectState.projects.length?projectState.projects.map(p=>'<article class="project-row"><strong>'+esc(p.repository)+'</strong><p>'+esc(p.cwd)+'</p><p>'+(p.available?(p.lastOpenedAt?'최근 열기 · '+ago(p.lastOpenedAt):'연결 완료'):'폴더를 찾을 수 없습니다. 등록을 해제하고 다시 연결하세요.')+'</p><div class="project-actions"><button class="btn" data-project-launch="'+esc(p.repository)+'" data-mode="resume" '+(!p.available?'disabled':'')+'>이어하기</button><button class="btn" data-project-launch="'+esc(p.repository)+'" data-mode="new" '+(!p.available?'disabled':'')+'>새 작업</button><button class="btn" data-project-remove="'+esc(p.repository)+'">등록 해제</button></div></article>').join(''):'<div class="project-empty">GitHub에서 프로젝트를 추가하세요.<br>등록한 프로젝트는 폴더를 다시 고르지 않고 바로 열 수 있습니다.</div>';
@@ -929,6 +931,7 @@ $('projectList').addEventListener('click',async e=>{const b=e.target.closest('bu
   if(b.dataset.projectRemove){projectState=await window.tidewatch.projects('remove',{repository:b.dataset.projectRemove});paintProjects();actionMessage('프로젝트 등록을 해제했습니다. 실제 폴더는 유지됩니다.')}
 }catch(e){actionMessage(e.message)}finally{b.disabled=false}});
 if(API){
+  if(window.tidewatch?.testNotification){$('notificationTest').hidden=false;$('notificationTest').onclick=async()=>{const b=$('notificationTest');b.disabled=true;try{const r=await window.tidewatch.testNotification();await refreshStatus();paintNotificationStatus();actionMessage(r.outcome==='delivered'?'Windows에 테스트 알림을 전달했습니다. 화면에 안 보이면 알림 센터와 Windows의 알림·방해 금지 설정을 확인하세요.':r.outcome==='failed'?'알림 전달에 실패했습니다. 설정의 전달 상태를 확인하세요.':'알림 전달 결과를 확인하지 못했습니다.')}catch(e){actionMessage(e.message)}finally{b.disabled=false}};setInterval(paintNotificationStatus,5000);paintNotificationStatus()}
   if(window.tidewatch?.projects){$('projects').hidden=false;$('projectsBtn').hidden=false;$('projectsBtn').onclick=showProjects;$('projectAdd').onclick=showProjects;window.tidewatch.projects('state').then(s=>{projectState=s;paintProjects()}).catch(e=>actionMessage(e.message))}
   if(window.tidewatch?.launchTerminal){$('terminalBtn').hidden=false;$('terminalBtn').onclick=async()=>{const b=$('terminalBtn');b.disabled=true;try{const r=await window.tidewatch.launchTerminal();if(!r.canceled)actionMessage('선택한 프로젝트에서 터미널을 열었습니다. 이어할 대화는 터미널 목록에서 선택하세요.')}catch(e){actionMessage(e.message)}finally{b.disabled=false}}}
   if(window.tidewatch?.onActivity)window.tidewatch.onActivity(event=>{status={...status,activity:[event,...(status?.activity||[]).filter(e=>e.key!==event.key)]};$('activity').innerHTML=activityMarkup();if(MINI)render(last);refreshBoard()});

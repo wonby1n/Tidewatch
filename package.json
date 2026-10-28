@@ -1,7 +1,7 @@
 {
   "name": "tidewatch-desktop",
   "productName": "Tidewatch",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "A local desktop status board for Claude Code and Codex",
   "license": "MIT",
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "prepare:github": "node scripts/prepare-github-cli.mjs",
-    "test": "node test/projects.cjs && node test/terminal.cjs && node test/activity.cjs && node test/usage.mjs && node test/smoke.mjs",
+    "test": "node test/notifications.cjs && node test/projects.cjs && node test/terminal.cjs && node test/activity.cjs && node test/usage.mjs && node test/smoke.mjs",
     "test:desktop": "electron . --smoke-test",
     "package:win": "node scripts/package-win.mjs",
     "installer:win": "electron-builder --win nsis --x64 --prepackaged release/Tidewatch-win32-x64 --publish never"

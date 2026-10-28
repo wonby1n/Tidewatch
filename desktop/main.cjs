@@ -2,11 +2,15 @@ const { app, BrowserWindow, Menu, dialog, screen, Notification, shell, ipcMain }
 const { createActivityMonitor, targetFor, saveLink, validId } = require('./activity.cjs');
 const { launchTerminal, openTerminal } = require('./terminal.cjs');
 const { createProjects } = require('./projects.cjs');
+const { createNotifier } = require('./notifications.cjs');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const net = require('node:net');
+
+// Register the installed app identity before Windows initializes notifications.
+app.setAppUserModelId('io.github.wonby1n.tidewatch');
 
 const smoke = process.argv.includes('--smoke-test');
 let root = process.env.TIDEWATCH_DIR || path.join(os.homedir(), '.tidewatch');
@@ -17,7 +21,7 @@ let backend, origin, quitting = false;
 let activityMonitor, pendingSession = null, lastOpened = '', lastOpenedAt = 0;
 let protocolReady=false;
 let projectService;
-const notifications = new Set();
+let notifier;
 const windows = new Map();
 const stateFile = path.join(app.getPath('userData'), 'windows.json');
 let state = {};
@@ -27,6 +31,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', (_event, args) => {
+    if(args.includes('--test-notification')&&notifier){void sendTestNotification();return;}
     const id = protocolSession(args);
     if (id) { pendingSession = id; if (origin) void openSession(id).catch(showError); }
     else show(args.includes('--mini'));
@@ -44,6 +49,7 @@ function protocolSession(args) {
 function showError(error) { if (!smoke) dialog.showErrorBox('Tidewatch', error.message); }
 async function openSession(id) {
   if (!validId(id)) throw new Error('잘못된 카드 ID입니다.');
+  if(id==='notification-test'){if(!smoke)show(false);return {destination:'board',exact:false}}
   if (id === lastOpened && Date.now() - lastOpenedAt < 1500) return { destination: 'already-opened' };
   const target = targetFor(root, id);
   if (smoke) return { destination: target.kind, exact: target.exact, testOnly: true };
@@ -59,20 +65,10 @@ async function openSession(id) {
 }
 function onActivity(event, notify) {
   for(const win of windows.values())if(!win.isDestroyed())win.webContents.send('tidewatch:activity',event);
-  if (smoke || !notify || !Notification.isSupported()) return;
-  const labels = { waiting: '응답 필요', blocked: '작업 막힘', done: '작업 완료' };
-  const xml = value => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&apos;' })[c]);
-  const options = { title: labels[event.status] + ' · ' + event.title, body: event.body,
-    icon: path.join(source, 'assets/tidewatch.png'), silent: false };
-  if (process.platform === 'win32'&&protocolReady) options.toastXml = '<toast activationType="protocol" launch="tidewatch://session/' + event.sessionId + '"><visual><binding template="ToastGeneric"><text>' + xml(options.title) + '</text><text>' + xml(event.body) + '</text></binding></visual></toast>';
-  const notification = new Notification(options);
-  notifications.add(notification);
-  notification.on('click', () => { void openSession(event.sessionId).catch(showError); notifications.delete(notification); });
-  notification.on('close', () => notifications.delete(notification));
-  notification.on('failed', () => notifications.delete(notification));
-  notification.show();
-  if (notifications.size > 20) notifications.delete(notifications.values().next().value);
+  if (smoke || !notify) return;
+  void notifier.send(event);
 }
+function sendTestNotification(){return notifier.send({test:true,sessionId:'notification-test',body:'Tidewatch 앱에서 보낸 테스트 알림입니다. 이 알림이 보이면 팝업 전달이 정상입니다.'})}
 
 function allowed(url) {
   try { const u = new URL(url); return u.origin === origin && u.pathname === '/'; } catch { return false; }
@@ -125,7 +121,9 @@ async function freePort() {
 }
 
 async function start() {
-  app.setAppUserModelId('io.github.wonby1n.tidewatch');
+  if(process.platform==='win32'&&app.isPackaged&&typeof app.setToastActivatorCLSID==='function'){
+    try{const shortcut=shell.readShortcutLink(path.join(app.getPath('appData'),'Microsoft/Windows/Start Menu/Programs/Tidewatch.lnk'));if(shortcut.toastActivatorClsid)app.setToastActivatorCLSID(shortcut.toastActivatorClsid)}catch{}
+  }
   fs.mkdirSync(root, { recursive: true });
   if(smoke){
     fs.mkdirSync(path.join(root,'sessions'),{recursive:true});
@@ -134,6 +132,12 @@ async function start() {
   activityMonitor = createActivityMonitor({ root, onEvent: onActivity });
   activityMonitor.lease();
   const checkSender = event => { if (!event.senderFrame || !allowed(event.senderFrame.url)) throw new Error('허용되지 않은 요청입니다.'); };
+  notifier=createNotifier({Notification,source,protocolReady:()=>protocolReady,
+    record:state=>{try{fs.writeFileSync(path.join(root,'notification-status.json'),JSON.stringify(state))}catch{}},
+    onClick:id=>{if(id==='notification-test')show(false);else void openSession(id).catch(showError)},
+  });
+  let lastTestAt=0;
+  ipcMain.handle('tidewatch:test-notification',async event=>{checkSender(event);if(smoke)return {outcome:'test-only'};if(Date.now()-lastTestAt<3000)throw new Error('잠시 후 다시 테스트하세요.');lastTestAt=Date.now();return sendTestNotification();});
   projectService = createProjects({ root, gh: path.join(__dirname,'..','vendor','github-cli','bin','gh.exe'), dialog,
     openExternal: url => smoke ? Promise.resolve() : shell.openExternal(url),
     openTerminal: options => openTerminal({ ...options, smoke }),
@@ -199,6 +203,7 @@ async function start() {
   ]));
   const win = show(process.argv.includes('--mini'));
   const initialSession = pendingSession || protocolSession(process.argv);
+  if(process.argv.includes('--test-notification')&&!smoke)void sendTestNotification();
   if (initialSession && !smoke) void openSession(initialSession).catch(showError);
   if (smoke) {
     await new Promise((resolve, reject) => { win.webContents.once('did-finish-load', resolve); win.webContents.once('did-fail-load', (_e, _code, message) => reject(new Error(message))); });
