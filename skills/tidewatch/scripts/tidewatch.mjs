@@ -373,29 +373,29 @@ var TEMPLATE = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html[data-mode=mini] body>*:not(#mini):not(script){display:none!important}
-html[data-mode=mini]{--note:#fff6b8;--note2:#fde68a;--noteink:#3b3014}
-@media (prefers-color-scheme:dark){html[data-mode=mini]:not([data-theme=light]){--note:#2b2614;--note2:#4a3f16;--noteink:#f5ecc8}}
-html[data-mode=mini][data-theme=dark]{--note:#2b2614;--note2:#4a3f16;--noteink:#f5ecc8}
-html[data-mode=mini] body{background:var(--note);color:var(--noteink)}
+html[data-mode=mini]{--youtx:#c2410c;--errtx:#b91c1c}
+@media (prefers-color-scheme:dark){html[data-mode=mini]:not([data-theme=light]){--youtx:#fdba74;--errtx:#fca5a5}}
+html[data-mode=mini][data-theme=dark]{--youtx:#fdba74;--errtx:#fca5a5}
 #mini{padding:12px 12px 16px;font-size:13px}
 .m-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .m-top b{font-size:13px;letter-spacing:.12em}
 .m-pills{display:flex;gap:8px;font-size:12px;font-weight:800;flex:1}
 .m-pills span{display:inline-flex;align-items:center;gap:4px}
 .m-pills i{width:8px;height:8px;border-radius:50%;background:var(--c)}
-.m-top button{border:0;background:var(--note2);color:var(--noteink);font-family:inherit;font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;cursor:pointer}
-.m-row{position:relative;padding:8px 10px 9px 12px;margin-bottom:6px;border-radius:8px;background:color-mix(in srgb,var(--note2) 55%,transparent);cursor:pointer;overflow:hidden}
+.m-top button{border:1px solid var(--line);background:var(--card);color:var(--ink);font-family:inherit;font-size:11px;font-weight:800;padding:4px 10px;border-radius:99px;cursor:pointer}
+.m-row{position:relative;padding:9px 11px 10px 14px;margin-bottom:6px;border-radius:10px;background:var(--card);border:1px solid var(--line);cursor:pointer;overflow:hidden}
 .m-row:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
-.m-row:hover{background:var(--note2)}
+.m-row:hover{border-color:var(--c)}
 .m-h{display:flex;align-items:center;gap:6px;min-width:0}
-.m-h b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.m-h b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;color:var(--ink)}
 .m-badge{flex:none;font-size:10px;font-weight:900;color:#fff;background:var(--c);padding:1px 7px;border-radius:99px}
-.m-ago{flex:none;font-size:11px;opacity:.6}
-.m-now,.m-you{margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
-.m-now{opacity:.8}
-.m-you{font-weight:800;color:var(--c)}
-.track.m{margin-top:6px;gap:3px}.track.m i{height:4px}
-.m-empty{padding:24px 4px;opacity:.7;text-align:center}
+.m-ago{flex:none;font-size:11px;color:var(--sub)}
+.m-now,.m-you{margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.m-now{color:var(--sub);font-weight:600}
+.m-you{font-weight:800;color:var(--youtx)}
+.m-row.blocked .m-now{color:var(--errtx);font-weight:700}
+.track.m{margin-top:7px;gap:3px}.track.m i{height:4px}
+.m-empty{padding:24px 4px;color:var(--sub);text-align:center}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:22px 24px 10px}
 .brand{display:flex;align-items:center;gap:10px}
@@ -685,7 +685,7 @@ function renderMini(ss){
   const rows=ss.map(s=>{
     const color=ST[s.st][1];const steps=(Array.isArray(s.steps)?s.steps:[]).filter(x=>x&&typeof x.text==='string');
     const line=s.needsYou?'<div class="m-you">'+esc(s.needsYou)+'</div>':s.now?'<div class="m-now">'+esc(s.now)+'</div>':'';
-    return '<div class="m-row" style="--c:'+color+'" title="'+esc((s.task?s.task+' — ':'')+(s.now||''))+'"><div class="m-h"><span class="m-badge">'+ST[s.st][0]+'</span><b>'+esc(s.title||s.id)+'</b><span class="m-ago">'+ago(s.mtime)+'</span></div>'+line
+    return '<div class="m-row '+s.st+'" style="--c:'+color+'" title="'+esc((s.task?s.task+' — ':'')+(s.now||''))+'"><div class="m-h"><span class="m-badge">'+ST[s.st][0]+'</span><b>'+esc(s.title||s.id)+'</b><span class="m-ago">'+ago(s.mtime)+'</span></div>'+line
       +(steps.length?'<div class="track m">'+steps.map(x=>'<i class="'+esc(x.state||'todo')+'"></i>').join('')+'</div>':'')+'</div>';
   }).join('');
   $('mini').innerHTML='<div class="m-top"><b>TIDEWATCH</b><span class="m-pills">'+pills+'</span><button type="button" id="bigBtn">크게 보기</button></div>'+(rows||'<div class="m-empty">진행 중인 세션이 없어요 🌊</div>');
