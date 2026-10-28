@@ -19,6 +19,7 @@ if [ ! -f "$SRC/SKILL.md" ]; then
   mkdir -p "$SRC/scripts" "$SRC/assets"
   curl -fsSL "$RAW/skills/tidewatch/SKILL.md" -o "$SRC/SKILL.md"
   curl -fsSL "$RAW/skills/tidewatch/scripts/tidewatch.mjs" -o "$SRC/scripts/tidewatch.mjs"
+  curl -fsSL "$RAW/skills/tidewatch/scripts/usage.mjs" -o "$SRC/scripts/usage.mjs"
   curl -fsSL "$RAW/skills/tidewatch/assets/tidewatch.png" -o "$SRC/assets/tidewatch.png"
   curl -fsSL "$RAW/skills/tidewatch/assets/tidewatch.ico" -o "$SRC/assets/tidewatch.ico"
 fi
@@ -37,6 +38,7 @@ install_to "$HOME/.agents/skills"          # Codex
 
 mkdir -p "$HOME/.tidewatch"
 cp "$SRC/scripts/tidewatch.mjs" "$HOME/.tidewatch/tidewatch.mjs"
+cp "$SRC/scripts/usage.mjs" "$HOME/.tidewatch/usage.mjs"
 cp "$SRC/assets/tidewatch.png" "$HOME/.tidewatch/tidewatch.png"
 rm -rf "$HOME/.tidewatch/skill" && cp -R "$SRC" "$HOME/.tidewatch/skill"
 if [ -f "$HOME/.tidewatch/server.pid" ]; then kill "$(cat "$HOME/.tidewatch/server.pid")" 2>/dev/null || true; rm -f "$HOME/.tidewatch/server.pid"; fi

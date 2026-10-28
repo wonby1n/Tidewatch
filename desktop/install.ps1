@@ -16,6 +16,7 @@ $Utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $Board 'desktop.json'), (@{ executable = $Exe } | ConvertTo-Json), $Utf8)
 $Bundled = Join-Path $Target 'resources\app\skills\tidewatch'
 Copy-Item -LiteralPath (Join-Path $Bundled 'scripts\tidewatch.mjs') -Destination (Join-Path $Board 'tidewatch.mjs') -Force
+Copy-Item -LiteralPath (Join-Path $Bundled 'scripts\usage.mjs') -Destination (Join-Path $Board 'usage.mjs') -Force
 foreach ($SkillRoot in @('.claude\skills', '.agents\skills', '.codex\skills')) {
   if ($SkillRoot -eq '.codex\skills' -and -not (Test-Path -LiteralPath (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'))) { continue }
   $SkillTarget = Join-Path ([Environment]::GetFolderPath('UserProfile')) (Join-Path $SkillRoot 'tidewatch')

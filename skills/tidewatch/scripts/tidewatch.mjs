@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v4 — https://github.com/wonby1n/tidewatch
+// Tidewatch v5 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,6 +8,7 @@ import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { createUsageService } from './usage.mjs';
 
 const ROOT = process.env.TIDEWATCH_DIR || path.join(os.homedir(), '.tidewatch');
 const SESS = path.join(ROOT, 'sessions');
@@ -212,6 +213,7 @@ function connect(name) {
 // ---------- 로컬 서버 (127.0.0.1 전용) ----------
 function serve() {
   ensureDirs();
+  const usage = createUsageService({ root: ROOT, disabled: process.env.TIDEWATCH_NO_USAGE === '1' });
   const token = crypto.randomBytes(16).toString('hex');
   const hosts = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
   const server = http.createServer((req, res) => {
@@ -232,14 +234,17 @@ function serve() {
       }
       if (url.pathname.startsWith('/api/') && req.headers['x-tidewatch-token'] !== token) return json(403, { error: 'token' });
       if (req.method === 'GET' && url.pathname === '/api/status') {
-        return json(200, { platform: process.platform, pet: petRunning(), settings: settings(), agents: agents() });
+        return json(200, { platform: process.platform, pet: petRunning(), settings: settings(), agents: agents(), usage: usage.snapshot() });
       }
       if (req.method === 'POST') {
         let body = '';
         req.on('data', (c) => { body += c; if (body.length > 1e4) req.destroy(); });
-        req.on('end', () => {
+        req.on('end', async () => {
           try {
             const input = body ? JSON.parse(body) : {};
+            if (url.pathname === '/api/usage/refresh') { await usage.refresh(); return json(200, { usage: usage.snapshot() }); }
+            if (url.pathname === '/api/usage/limited') { usage.setLimited(String(input.agent), input.limited); return json(200, { usage: usage.snapshot() }); }
+            if (url.pathname === '/api/usage/claude-connect') return json(200, usage.connectClaude());
             if (url.pathname === '/api/pet') {
               if (input.on) { const msg = pet(); return json(200, { ok: true, message: msg }); }
               petStop(); return json(200, { ok: true });
@@ -482,6 +487,18 @@ html[data-size=l] .grid{zoom:1.18}
 .conn small{color:var(--sub);font-weight:600;font-size:12px;padding-right:6px}
 .conn button{border:0;background:var(--ink);color:var(--card);font-family:inherit;font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;cursor:pointer}
 .hint2{padding:0 24px 14px;color:var(--sub);font-size:12px}
+.usage{padding:0 24px 18px}.usage-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
+.usage-top h2{font-size:13px;margin:0;color:var(--sub)}.usage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.usage-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.usage-card.limited{border-color:#ef4444}.usage-head{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px}
+.usage-state{font-size:11px;color:var(--sub)}.usage-card.limited .usage-state{color:#dc2626;font-weight:800}
+.usage-model{font-size:13px;font-weight:800;margin:7px 0;overflow-wrap:anywhere}.usage-card small{display:block;color:var(--sub);font-size:11px;line-height:1.5}
+.usage-window{margin:7px 0;font-size:12px}.usage-window label{display:flex;justify-content:space-between;gap:4px}
+.usage-window progress{width:100%;height:5px;accent-color:#3b82f6}.usage-card.limited progress{accent-color:#ef4444}
+.usage-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.usage-actions button{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:7px;background:var(--chip);color:var(--ink);padding:4px 6px;cursor:pointer}
+.usage-note{margin:7px 0 0;font-size:11px;color:var(--sub);line-height:1.5}.usage-error{color:#dc2626}
+html[data-mode="mini"] .usage{display:none}
+@media(max-width:520px){.usage{padding-left:16px;padding-right:16px}.usage-grid{grid-template-columns:1fr}}
 @media (max-width:520px){.panel,.hint2{padding-left:16px;padding-right:16px}}
 .bell{font-size:12px;font-weight:700;color:var(--sub);padding:6px 4px;cursor:help}
 .badge{flex:none;font-size:12px;font-weight:800;color:#fff;background:var(--c);padding:3px 10px;border-radius:99px}
@@ -553,6 +570,12 @@ html[data-size=l] .grid{zoom:1.18}
     <span class="meta" id="meta"></span>
   </div>
 </header>
+<section class="usage" id="usage" hidden aria-label="AI 모델과 사용 한도">
+  <div class="usage-top"><h2>AI 사용 상태</h2><button class="btn" id="usageRefresh" type="button">한도 새로고침</button></div>
+  <div class="usage-grid" id="usageGrid"></div>
+  <p class="usage-note">구독 한도와 대화 토큰은 별개입니다. 모델·대화 토큰은 최근 세션 기준이며, 오래된 정보는 현재 상태와 다를 수 있습니다.</p>
+  <p class="usage-note" id="usageMessage" role="status"></p>
+</section>
 <div class="sum" id="sum"></div>
 <div class="panel" id="panel" hidden>
   <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
@@ -701,6 +724,7 @@ $('mini').addEventListener('click',e=>{if(e.target.closest('#bigBtn')||e.target.
 $('miniBtn').addEventListener('click',()=>window.open(bigUrl()+'?mini=1','tidewatch-mini','popup,width=360,height=520'));
 function paintPanel(){
   if(!status)return;
+  paintUsage();
   const pb=$('petBtn');pb.hidden=status.platform!=='win32';pb.classList.toggle('on',!!status.pet);pb.querySelector('span').textContent=status.pet?'펫 켜짐':'펫 꺼짐';
   const nb=$('notifyBtn');const on=status.settings&&status.settings.notify!==false;nb.classList.toggle('on',on);nb.querySelector('span').textContent=on?'알림 켜짐':'알림 꺼짐';
   for(const k of Object.keys(NAMES)){
@@ -708,8 +732,40 @@ function paintPanel(){
     el.innerHTML='<i class="d"></i>'+NAMES[k]+' <small>'+(a.installed?(a.lastSeen?'연결됨 · '+ago(a.lastSeen)+' 활동':'연결됨 · 아직 카드 없음'):'연결 안 됨')+'</small>'+(a.installed?'':'<button data-agent="'+k+'">연결하기</button>');
   }
 }
+function paintUsage(){
+  const all=status.usage||{};const now=Date.now();
+  $('usageGrid').innerHTML=Object.entries(NAMES).map(([agent,name])=>{
+    const u=all[agent]||{};
+    const windows=(Array.isArray(u.windows)?u.windows:[]).filter(w=>typeof w.usedPercent==='number');
+    const active=windows.filter(w=>!w.resetsAt||w.resetsAt*1000>now);
+    const stale=!u.observedAt||now-u.observedAt>5*60000;
+    const limited=!!u.manualLimited||(!stale&&active.some(w=>w.usedPercent>=100));
+    const state=u.manualLimited?'한도 도달 · 직접 표시':limited?'사용 한도 도달':stale?'최신 확인 필요':active.length?'한도 확인됨':'한도 확인 불가';
+    const bars=windows.map(w=>{
+      const expired=w.resetsAt&&w.resetsAt*1000<=now;
+      const label=w.windowDurationMins===300?'5시간':w.windowDurationMins===10080?'주간':w.windowDurationMins?w.windowDurationMins+'분':'사용 한도';
+      const reset=w.resetsAt?new Date(w.resetsAt*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'확인 불가';
+      return '<div class="usage-window"><label><span>'+esc(label)+(expired?' · 만료된 정보':'')+'</span><b>'+Math.round(w.usedPercent)+'% 사용</b></label><progress max="100" value="'+Math.max(0,Math.min(100,w.usedPercent))+'"></progress><small>초기화 '+esc(reset)+'</small></div>';
+    }).join('');
+    const tokens=typeof u.inputTokens==='number'||typeof u.outputTokens==='number'?'<small>최근 대화 누적 토큰 · 입력 '+(typeof u.inputTokens==='number'?u.inputTokens.toLocaleString():'확인 불가')+' / 출력 '+(typeof u.outputTokens==='number'?u.outputTokens.toLocaleString():'확인 불가')+'</small>':'';
+    const source=u.source==='codex-app-server'?'Codex 계정 조회':u.source==='claude-statusline'?'Claude 상태줄':u.source==='local-session'?'로컬 세션 기록':'미연결';
+    return '<article class="usage-card '+(limited?'limited':'')+'"><div class="usage-head"><b>'+name+'</b><span class="usage-state">'+state+'</span></div><div class="usage-model">최근 모델 · '+esc(u.model||'확인 불가')+'</div>'
+      +(u.modelObservedAt?'<small>모델 기록 '+esc(ago(u.modelObservedAt))+'</small>':'')+bars+(!windows.length?'<small>구독 한도 수치 확인 불가</small>':'')+tokens
+      +(typeof u.contextUsedPercent==='number'?'<small>최근 대화 컨텍스트 '+Math.round(u.contextUsedPercent)+'% 사용</small>':'')
+      +'<small>'+source+(u.observedAt?' · '+esc(ago(u.observedAt)):'')+(stale?' · 오래되었거나 미수집':'')+'</small>'
+      +'<div class="usage-actions">'+(agent==='claude'&&!u.hookConnected?'<button data-usage="connect" type="button">사용량 연결</button>':'')
+      +'<button data-usage="limited" data-agent="'+agent+'" data-limited="'+(!u.manualLimited)+'" type="button">'+(u.manualLimited?'직접 표시 해제':'한도 도달 직접 표시')+'</button></div></article>';
+  }).join('');
+}
 async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
 if(API){
+  $('usage').hidden=false;
+  $('usageRefresh').addEventListener('click',async()=>{const b=$('usageRefresh');b.disabled=true;$('usageMessage').textContent='사용 한도 확인 중…';try{await api('/api/usage/refresh',{});await refreshStatus();$('usageMessage').textContent='확인된 정보를 표시했습니다. 수치가 없으면 미연결 또는 제공되지 않는 정보입니다.'}catch(e){$('usageMessage').textContent=e.message}finally{b.disabled=false}});
+  $('usageGrid').addEventListener('click',async e=>{const b=e.target.closest('button[data-usage]');if(!b)return;b.disabled=true;try{
+    if(b.dataset.usage==='connect'){await api('/api/usage/claude-connect',{});$('usageMessage').textContent='Claude Code 상태줄을 연결했습니다. 새 상태 보고가 도착하면 모델과 한도가 표시됩니다. Claude 데스크톱에는 적용되지 않습니다.'}
+    else await api('/api/usage/limited',{agent:b.dataset.agent,limited:b.dataset.limited==='true'});
+    await refreshStatus();
+  }catch(err){$('usageMessage').textContent=err.message}finally{b.disabled=false}});
   $('panel').hidden=false;$('bell').hidden=true;refreshStatus();setInterval(refreshStatus,5000);
   $('petBtn').addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;try{await api('/api/pet',{on:!status.pet})}catch(err){b.title=err.message}setTimeout(async()=>{await refreshStatus();b.disabled=false},1500)});
   $('notifyBtn').addEventListener('click',async()=>{try{await api('/api/notify',{on:!(status.settings&&status.settings.notify!==false)})}catch(err){}refreshStatus()});

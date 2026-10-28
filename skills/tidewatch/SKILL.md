@@ -13,7 +13,7 @@ description: Tidewatch — a live board for many Claude Code and Codex sessions;
 
 ## 1. 준비 (세션마다 처음 한 번)
 
-1. `~/.tidewatch/tidewatch.mjs`가 있는지 확인한다. 없거나 두 번째 줄이 이 스킬 폴더의 `scripts/tidewatch.mjs` 두 번째 줄(`// Tidewatch v3 …`)과 다르면, `scripts/tidewatch.mjs`를 `~/.tidewatch/tidewatch.mjs`로 복사한다. 홈 경로는 `node -e "console.log(require('os').homedir())"`로 확인한다.
+1. `~/.tidewatch/tidewatch.mjs`와 `~/.tidewatch/usage.mjs`가 있는지 확인한다. 없거나 두 번째 줄이 이 스킬 폴더의 `scripts/tidewatch.mjs` 두 번째 줄과 다르면, `scripts/tidewatch.mjs`와 `scripts/usage.mjs`를 `~/.tidewatch/`로 함께 복사한다. 홈 경로는 `node -e "console.log(require('os').homedir())"`로 확인한다.
 2. 세션 id를 정한다: `<프로젝트폴더명>-<agent>-<영문 소문자·숫자 4글자>` (예: `pickcase-claude-k3f9`). 마지막 4글자는 처음 한 번 무작위로 정한다. 영문 소문자, 숫자, `-`만 쓴다.
    - **세션 1개 = 카드 1장.** 이 세션이 끝날 때까지 같은 id, 같은 파일만 쓴다. 같은 세션에서 사용자가 새 일을 맡기면 새 카드를 만들지 않고 이 카드의 `task`·`goal`·`steps`를 새 일로 바꾸고 (주제까지 바뀌면 `title`도), 끝난 일은 `log` 맨 위에 `✓ <끝난 일> — <결과 한 줄>`로 남긴다.
    - 같은 프로젝트에서 세션을 여러 개 돌리면 카드는 세션마다 하나씩이고, 현황판이 `project` 이름으로 알아서 묶어 보여준다. `project`는 프로젝트 폴더 이름을 그대로 쓴다.

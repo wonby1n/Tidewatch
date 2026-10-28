@@ -80,7 +80,11 @@ async function start() {
   }
   // The connect button needs a bundled skill, even when Node.js is not installed.
   fs.cpSync(source, path.join(root, 'skill'), { recursive: true });
-  for (const name of ['pet.ps1', 'tidewatch.mjs']) fs.copyFileSync(path.join(source, 'scripts', name), path.join(root, name));
+  for (const folder of ['.claude/skills/tidewatch', '.agents/skills/tidewatch', '.codex/skills/tidewatch']) {
+    const installed = path.join(os.homedir(), folder);
+    if (!smoke && fs.existsSync(path.join(installed, 'SKILL.md'))) fs.cpSync(source, installed, { recursive: true });
+  }
+  for (const name of ['pet.ps1', 'tidewatch.mjs', 'usage.mjs']) fs.copyFileSync(path.join(source, 'scripts', name), path.join(root, name));
   const port = await freePort();
   origin = `http://127.0.0.1:${port}`;
   const script = path.join(source, 'scripts', 'tidewatch.mjs');
@@ -109,10 +113,21 @@ async function start() {
     await new Promise((resolve, reject) => { win.webContents.once('did-finish-load', resolve); win.webContents.once('did-fail-load', (_e, _code, message) => reject(new Error(message))); });
     const result = await win.webContents.executeJavaScript(`(async()=>{
       const r=await fetch('/api/status',{headers:{'x-tidewatch-token':window.TW_TOKEN}});
-      return {title:document.title, board:!!document.getElementById('board'), status:r.status,
+      return {title:document.title, board:!!document.getElementById('board'), usage:!!document.getElementById('usageGrid'), status:r.status,
         node:typeof require, token:!!window.TW_TOKEN, cards:document.querySelectorAll('.card').length};
     })()`);
-    if (!result.board || !result.token || result.status !== 200 || result.node !== 'undefined') throw new Error(JSON.stringify(result));
+    if (!result.board || !result.usage || !result.token || result.status !== 200 || result.node !== 'undefined') throw new Error(JSON.stringify(result));
+    const usageUI = await win.webContents.executeJavaScript(`(()=>{
+      const original=status;
+      try {
+        status={...status,usage:{claude:{manualLimited:true},codex:{observedAt:Date.now(),windows:[{usedPercent:100,windowDurationMins:300,resetsAt:1}]}}};
+        paintUsage();
+        const cards=[...document.querySelectorAll('.usage-card')];
+        return {manual:cards[0].classList.contains('limited')&&cards[0].textContent.includes('직접 표시'),
+          unknown:cards[0].textContent.includes('확인 불가'),expired:!cards[1].classList.contains('limited')&&cards[1].textContent.includes('만료된 정보')};
+      } finally {status=original;paintUsage()}
+    })()`);
+    if (!usageUI.manual || !usageUI.unknown || !usageUI.expired) throw new Error('Usage UI failed: ' + JSON.stringify(usageUI));
     await win.webContents.executeJavaScript(`document.getElementById('miniBtn').click()`);
     const mini = windows.get('mini');
     if (!mini) throw new Error('Mini button did not open an app window');

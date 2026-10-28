@@ -10,7 +10,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
 const script = path.join(repo, 'skills/tidewatch/scripts/tidewatch.mjs');
 const dir = process.env.TIDEWATCH_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'tidewatch-'));
-const env = { ...process.env, TIDEWATCH_DIR: dir };
+const env = { ...process.env, TIDEWATCH_DIR: dir, TIDEWATCH_NO_USAGE: '1' };
 const run = (...args) => execFileSync(process.execPath, [script, ...args], { env, encoding: 'utf8' }).trim();
 const data = () => JSON.parse(fs.readFileSync(path.join(dir, 'board-data.js'), 'utf8').replace(/^window\.__TIDE\(/, '').replace(/\);$/, ''));
 
@@ -169,6 +169,20 @@ check('notifications fire once when a session becomes waiting, and can be turned
     st = await (await call('/api/status')).json();
     check('notifications can be switched off from the app', () => assert.equal(st.settings.notify, false));
     await call('/api/notify', { on: true });
+    assert.equal((await call('/api/usage/limited', { agent: 'unknown', limited: true })).status, 400);
+    await call('/api/usage/limited', { agent: 'claude', limited: true });
+    st = await (await call('/api/status')).json();
+    check('usage endpoint keeps manual limit flags separate from unknown measured usage', () => {
+      assert.equal(st.usage.claude.manualLimited, true);
+      assert.equal(st.usage.claude.observedAt, undefined);
+    });
+    assert.equal((await call('/api/usage/claude-connect', {})).status, 200);
+    st = await (await call('/api/status')).json();
+    check('Claude usage connection creates a local status-line hook', () => {
+      assert.equal(st.usage.claude.hookConnected, true);
+      const config = JSON.parse(fs.readFileSync(path.join(home, '.claude/settings.json')));
+      assert.match(config.statusLine.command, /usage\.mjs/);
+    });
   } finally { srv.kill(); }
 }
 

@@ -18,6 +18,7 @@ if (-not $Src -or -not (Test-Path (Join-Path $Src 'SKILL.md'))) {
   New-Item -ItemType Directory -Force -Path (Join-Path $Src 'assets') | Out-Null
   Invoke-WebRequest "$Raw/skills/tidewatch/SKILL.md" -OutFile (Join-Path $Src 'SKILL.md') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/scripts/tidewatch.mjs" -OutFile (Join-Path $Src 'scripts\tidewatch.mjs') -UseBasicParsing
+  Invoke-WebRequest "$Raw/skills/tidewatch/scripts/usage.mjs" -OutFile (Join-Path $Src 'scripts\usage.mjs') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/scripts/pet.ps1" -OutFile (Join-Path $Src 'scripts\pet.ps1') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/assets/tidewatch.ico" -OutFile (Join-Path $Src 'assets\tidewatch.ico') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/assets/tidewatch.png" -OutFile (Join-Path $Src 'assets\tidewatch.png') -UseBasicParsing
@@ -39,6 +40,7 @@ if (Test-Path (Join-Path $HOME '.codex')) { Install-To (Join-Path $HOME '.codex\
 $Board = Join-Path $HOME '.tidewatch'
 New-Item -ItemType Directory -Force -Path $Board | Out-Null
 Copy-Item (Join-Path $Src 'scripts\tidewatch.mjs') (Join-Path $Board 'tidewatch.mjs') -Force
+Copy-Item (Join-Path $Src 'scripts\usage.mjs') (Join-Path $Board 'usage.mjs') -Force
 $Icon = Join-Path $Board 'tidewatch.ico'
 Copy-Item (Join-Path $Src 'assets\tidewatch.ico') $Icon -Force
 Copy-Item (Join-Path $Src 'assets\tidewatch.png') (Join-Path $Board 'tidewatch.png') -Force

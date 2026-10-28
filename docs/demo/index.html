@@ -111,6 +111,18 @@ html[data-size=l] .grid{zoom:1.18}
 .conn small{color:var(--sub);font-weight:600;font-size:12px;padding-right:6px}
 .conn button{border:0;background:var(--ink);color:var(--card);font-family:inherit;font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;cursor:pointer}
 .hint2{padding:0 24px 14px;color:var(--sub);font-size:12px}
+.usage{padding:0 24px 18px}.usage-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
+.usage-top h2{font-size:13px;margin:0;color:var(--sub)}.usage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.usage-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.usage-card.limited{border-color:#ef4444}.usage-head{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px}
+.usage-state{font-size:11px;color:var(--sub)}.usage-card.limited .usage-state{color:#dc2626;font-weight:800}
+.usage-model{font-size:13px;font-weight:800;margin:7px 0;overflow-wrap:anywhere}.usage-card small{display:block;color:var(--sub);font-size:11px;line-height:1.5}
+.usage-window{margin:7px 0;font-size:12px}.usage-window label{display:flex;justify-content:space-between;gap:4px}
+.usage-window progress{width:100%;height:5px;accent-color:#3b82f6}.usage-card.limited progress{accent-color:#ef4444}
+.usage-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.usage-actions button{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:7px;background:var(--chip);color:var(--ink);padding:4px 6px;cursor:pointer}
+.usage-note{margin:7px 0 0;font-size:11px;color:var(--sub);line-height:1.5}.usage-error{color:#dc2626}
+html[data-mode="mini"] .usage{display:none}
+@media(max-width:520px){.usage{padding-left:16px;padding-right:16px}.usage-grid{grid-template-columns:1fr}}
 @media (max-width:520px){.panel,.hint2{padding-left:16px;padding-right:16px}}
 .bell{font-size:12px;font-weight:700;color:var(--sub);padding:6px 4px;cursor:help}
 .badge{flex:none;font-size:12px;font-weight:800;color:#fff;background:var(--c);padding:3px 10px;border-radius:99px}
@@ -182,6 +194,12 @@ html[data-size=l] .grid{zoom:1.18}
     <span class="meta" id="meta"></span>
   </div>
 </header>
+<section class="usage" id="usage" hidden aria-label="AI 모델과 사용 한도">
+  <div class="usage-top"><h2>AI 사용 상태</h2><button class="btn" id="usageRefresh" type="button">한도 새로고침</button></div>
+  <div class="usage-grid" id="usageGrid"></div>
+  <p class="usage-note">구독 한도와 대화 토큰은 별개입니다. 모델·대화 토큰은 최근 세션 기준이며, 오래된 정보는 현재 상태와 다를 수 있습니다.</p>
+  <p class="usage-note" id="usageMessage" role="status"></p>
+</section>
 <div class="sum" id="sum"></div>
 <div class="panel" id="panel" hidden>
   <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
@@ -330,6 +348,7 @@ $('mini').addEventListener('click',e=>{if(e.target.closest('#bigBtn')||e.target.
 $('miniBtn').addEventListener('click',()=>window.open(bigUrl()+'?mini=1','tidewatch-mini','popup,width=360,height=520'));
 function paintPanel(){
   if(!status)return;
+  paintUsage();
   const pb=$('petBtn');pb.hidden=status.platform!=='win32';pb.classList.toggle('on',!!status.pet);pb.querySelector('span').textContent=status.pet?'펫 켜짐':'펫 꺼짐';
   const nb=$('notifyBtn');const on=status.settings&&status.settings.notify!==false;nb.classList.toggle('on',on);nb.querySelector('span').textContent=on?'알림 켜짐':'알림 꺼짐';
   for(const k of Object.keys(NAMES)){
@@ -337,14 +356,46 @@ function paintPanel(){
     el.innerHTML='<i class="d"></i>'+NAMES[k]+' <small>'+(a.installed?(a.lastSeen?'연결됨 · '+ago(a.lastSeen)+' 활동':'연결됨 · 아직 카드 없음'):'연결 안 됨')+'</small>'+(a.installed?'':'<button data-agent="'+k+'">연결하기</button>');
   }
 }
+function paintUsage(){
+  const all=status.usage||{};const now=Date.now();
+  $('usageGrid').innerHTML=Object.entries(NAMES).map(([agent,name])=>{
+    const u=all[agent]||{};
+    const windows=(Array.isArray(u.windows)?u.windows:[]).filter(w=>typeof w.usedPercent==='number');
+    const active=windows.filter(w=>!w.resetsAt||w.resetsAt*1000>now);
+    const stale=!u.observedAt||now-u.observedAt>5*60000;
+    const limited=!!u.manualLimited||(!stale&&active.some(w=>w.usedPercent>=100));
+    const state=u.manualLimited?'한도 도달 · 직접 표시':limited?'사용 한도 도달':stale?'최신 확인 필요':active.length?'한도 확인됨':'한도 확인 불가';
+    const bars=windows.map(w=>{
+      const expired=w.resetsAt&&w.resetsAt*1000<=now;
+      const label=w.windowDurationMins===300?'5시간':w.windowDurationMins===10080?'주간':w.windowDurationMins?w.windowDurationMins+'분':'사용 한도';
+      const reset=w.resetsAt?new Date(w.resetsAt*1000).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'확인 불가';
+      return '<div class="usage-window"><label><span>'+esc(label)+(expired?' · 만료된 정보':'')+'</span><b>'+Math.round(w.usedPercent)+'% 사용</b></label><progress max="100" value="'+Math.max(0,Math.min(100,w.usedPercent))+'"></progress><small>초기화 '+esc(reset)+'</small></div>';
+    }).join('');
+    const tokens=typeof u.inputTokens==='number'||typeof u.outputTokens==='number'?'<small>최근 대화 누적 토큰 · 입력 '+(typeof u.inputTokens==='number'?u.inputTokens.toLocaleString():'확인 불가')+' / 출력 '+(typeof u.outputTokens==='number'?u.outputTokens.toLocaleString():'확인 불가')+'</small>':'';
+    const source=u.source==='codex-app-server'?'Codex 계정 조회':u.source==='claude-statusline'?'Claude 상태줄':u.source==='local-session'?'로컬 세션 기록':'미연결';
+    return '<article class="usage-card '+(limited?'limited':'')+'"><div class="usage-head"><b>'+name+'</b><span class="usage-state">'+state+'</span></div><div class="usage-model">최근 모델 · '+esc(u.model||'확인 불가')+'</div>'
+      +(u.modelObservedAt?'<small>모델 기록 '+esc(ago(u.modelObservedAt))+'</small>':'')+bars+(!windows.length?'<small>구독 한도 수치 확인 불가</small>':'')+tokens
+      +(typeof u.contextUsedPercent==='number'?'<small>최근 대화 컨텍스트 '+Math.round(u.contextUsedPercent)+'% 사용</small>':'')
+      +'<small>'+source+(u.observedAt?' · '+esc(ago(u.observedAt)):'')+(stale?' · 오래되었거나 미수집':'')+'</small>'
+      +'<div class="usage-actions">'+(agent==='claude'&&!u.hookConnected?'<button data-usage="connect" type="button">사용량 연결</button>':'')
+      +'<button data-usage="limited" data-agent="'+agent+'" data-limited="'+(!u.manualLimited)+'" type="button">'+(u.manualLimited?'직접 표시 해제':'한도 도달 직접 표시')+'</button></div></article>';
+  }).join('');
+}
 async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
 if(API){
+  $('usage').hidden=false;
+  $('usageRefresh').addEventListener('click',async()=>{const b=$('usageRefresh');b.disabled=true;$('usageMessage').textContent='사용 한도 확인 중…';try{await api('/api/usage/refresh',{});await refreshStatus();$('usageMessage').textContent='확인된 정보를 표시했습니다. 수치가 없으면 미연결 또는 제공되지 않는 정보입니다.'}catch(e){$('usageMessage').textContent=e.message}finally{b.disabled=false}});
+  $('usageGrid').addEventListener('click',async e=>{const b=e.target.closest('button[data-usage]');if(!b)return;b.disabled=true;try{
+    if(b.dataset.usage==='connect'){await api('/api/usage/claude-connect',{});$('usageMessage').textContent='Claude Code 상태줄을 연결했습니다. 새 상태 보고가 도착하면 모델과 한도가 표시됩니다. Claude 데스크톱에는 적용되지 않습니다.'}
+    else await api('/api/usage/limited',{agent:b.dataset.agent,limited:b.dataset.limited==='true'});
+    await refreshStatus();
+  }catch(err){$('usageMessage').textContent=err.message}finally{b.disabled=false}});
   $('panel').hidden=false;$('bell').hidden=true;refreshStatus();setInterval(refreshStatus,5000);
   $('petBtn').addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;try{await api('/api/pet',{on:!status.pet})}catch(err){b.title=err.message}setTimeout(async()=>{await refreshStatus();b.disabled=false},1500)});
   $('notifyBtn').addEventListener('click',async()=>{try{await api('/api/notify',{on:!(status.settings&&status.settings.notify!==false)})}catch(err){}refreshStatus()});
   $('panel').addEventListener('click',async e=>{const b=e.target.closest('button[data-agent]');if(!b)return;b.disabled=true;b.textContent='연결 중…';try{await api('/api/connect',{agent:b.dataset.agent})}catch(err){b.textContent='실패';b.title=err.message}refreshStatus()});
 }else{$('hint').hidden=false}
 window.__TIDE=render;
-render({"sessions":[{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"검색 인덱스 설계","status":"waiting","now":"매핑 초안 완료, 분석기 선택만 남음","needsYou":"한글 분석기 nori(형태소) vs ngram(부분일치) 중 골라줘","steps":[{"text":"데이터 컬럼 정리","state":"done"},{"text":"매핑 초안","state":"done","detail":"단지명·주소는 text+keyword, 가격은 long"},{"text":"분석기 결정","state":"doing"}],"id":"apt-search-index","mtime":1793152824362.196,"timing":{"데이터 컬럼 정리":{"end":1793153646733,"start":1793153646733},"매핑 초안":{"end":1793153646733,"start":1793153646733},"분석기 결정":{"start":1793153646733}}},{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"실거래가 데이터 수집","status":"working","now":"국토부 API 페이지네이션 처리 중","steps":[{"text":"API 키 발급","state":"done"},{"text":"수집 스크립트","state":"doing","detail":"2019~2026년, 월별 호출"},{"text":"정제","state":"todo"},{"text":"색인","state":"todo"}],"id":"es-crawl","mtime":1793152824363.2012,"timing":{"API 키 발급":{"end":1793153646733,"start":1793153646733},"수집 스크립트":{"start":1793153646733},"정제":{},"색인":{}}},{"agent":"claude","project":"pickcase","title":"Pickcase 백업 개선","task":"백업을 zip으로 바꾸기","goal":"사진이 많아도 백업되게","status":"blocked","now":"restoreBackup 테스트가 실패해서 원인 보는 중","needsYou":"","error":{"where":"tests/records.cjs:142 · npm test","message":"AssertionError: expected 3 photos, got 0\n    at restore (tests/records.cjs:142:12)"},"steps":[{"text":"zip 라이브러리 고르기","state":"done","detail":"react-native-zip-archive (Expo 플러그인 있음)"},{"text":"exportBackup zip으로","state":"done"},{"text":"restoreBackup zip 읽기","state":"error","detail":"압축 푼 경로가 캐시 폴더라 사진 참조가 깨짐"},{"text":"테스트 고치기","state":"todo"}],"log":["zip 안 사진 경로를 상대 경로로 바꾸기로 함"],"id":"pickcase-backup-zip","mtime":1793152824364.1958,"timing":{"zip 라이브러리 고르기":{"end":1793153646733,"start":1793153646733},"exportBackup zip으로":{"end":1793153646733,"start":1793153646733},"restoreBackup zip 읽기":{"start":1793153646733},"테스트 고치기":{}}},{"agent":"claude","project":"trendot","title":"트렌닷 콘텐츠","task":"카드뉴스 10월 4주차","status":"done","now":"카드 6장 완성, Figma에 올림","steps":[{"text":"주제 리서치","state":"done"},{"text":"카드 6장","state":"done"},{"text":"릴스 버전","state":"skipped","detail":"이번 주는 건너뜀"}],"id":"trendot-cards","mtime":1793152824364.1958,"timing":{"주제 리서치":{"end":1793153646733,"start":1793153646733},"카드 6장":{"end":1793153646733,"start":1793153646733},"릴스 버전":{}}}],"builtAt":1793153646733,"settings":{"notify":true,"notifyOn":["waiting","blocked","done"]}});
+render({"sessions":[{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"검색 인덱스 설계","status":"waiting","now":"매핑 초안 완료, 분석기 선택만 남음","needsYou":"한글 분석기 nori(형태소) vs ngram(부분일치) 중 골라줘","steps":[{"text":"데이터 컬럼 정리","state":"done"},{"text":"매핑 초안","state":"done","detail":"단지명·주소는 text+keyword, 가격은 long"},{"text":"분석기 결정","state":"doing"}],"id":"apt-search-index","mtime":1793152824362.196,"timing":{"데이터 컬럼 정리":{"end":1793155211975,"start":1793155211975},"매핑 초안":{"end":1793155211975,"start":1793155211975},"분석기 결정":{"start":1793155211975}}},{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"실거래가 데이터 수집","status":"working","now":"국토부 API 페이지네이션 처리 중","steps":[{"text":"API 키 발급","state":"done"},{"text":"수집 스크립트","state":"doing","detail":"2019~2026년, 월별 호출"},{"text":"정제","state":"todo"},{"text":"색인","state":"todo"}],"id":"es-crawl","mtime":1793152824363.2012,"timing":{"API 키 발급":{"end":1793155211975,"start":1793155211975},"수집 스크립트":{"start":1793155211975},"정제":{},"색인":{}}},{"agent":"claude","project":"pickcase","title":"Pickcase 백업 개선","task":"백업을 zip으로 바꾸기","goal":"사진이 많아도 백업되게","status":"blocked","now":"restoreBackup 테스트가 실패해서 원인 보는 중","needsYou":"","error":{"where":"tests/records.cjs:142 · npm test","message":"AssertionError: expected 3 photos, got 0\n    at restore (tests/records.cjs:142:12)"},"steps":[{"text":"zip 라이브러리 고르기","state":"done","detail":"react-native-zip-archive (Expo 플러그인 있음)"},{"text":"exportBackup zip으로","state":"done"},{"text":"restoreBackup zip 읽기","state":"error","detail":"압축 푼 경로가 캐시 폴더라 사진 참조가 깨짐"},{"text":"테스트 고치기","state":"todo"}],"log":["zip 안 사진 경로를 상대 경로로 바꾸기로 함"],"id":"pickcase-backup-zip","mtime":1793152824364.1958,"timing":{"zip 라이브러리 고르기":{"end":1793155211975,"start":1793155211975},"exportBackup zip으로":{"end":1793155211975,"start":1793155211975},"restoreBackup zip 읽기":{"start":1793155211975},"테스트 고치기":{}}},{"agent":"claude","project":"trendot","title":"트렌닷 콘텐츠","task":"카드뉴스 10월 4주차","status":"done","now":"카드 6장 완성, Figma에 올림","steps":[{"text":"주제 리서치","state":"done"},{"text":"카드 6장","state":"done"},{"text":"릴스 버전","state":"skipped","detail":"이번 주는 건너뜀"}],"id":"trendot-cards","mtime":1793152824364.1958,"timing":{"주제 리서치":{"end":1793155211975,"start":1793155211975},"카드 6장":{"end":1793155211975,"start":1793155211975},"릴스 버전":{}}}],"builtAt":1793155211975,"settings":{"notify":true,"notifyOn":["waiting","blocked","done"]}});
 setInterval(()=>{const s=document.createElement('script');s.src='board-data.js?t='+Date.now();s.onload=s.onerror=()=>s.remove();document.head.appendChild(s)},3000);
 </script></body></html>

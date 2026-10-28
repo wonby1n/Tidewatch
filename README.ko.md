@@ -44,6 +44,14 @@ powershell -NoProfile -File desktop/install.ps1
 
 개발 실행은 `npm start`입니다. 앱 검사는 `TIDEWATCH_DIR`을 임시 폴더로 지정한 뒤 `npm run test:desktop`으로 실행합니다.
 
+## 상단 모델·사용 한도
+
+상단에 에이전트별 최근 모델, 제공되는 5시간·주간 한도 사용률과 초기화 시각, 최근 대화의 토큰 수를 표시합니다. Codex는 설치된 CLI의 공식 계정 조회를 사용합니다. Claude Code는 **사용량 연결**로 공식 상태줄 데이터를 받을 수 있고, 기존 커스텀 상태줄은 덮어쓰지 않습니다.
+
+모르는 값은 확인 불가로, 오래된 값은 갱신 필요로 표시합니다. 대화 토큰과 구독 한도는 별개입니다. 응답이 막혀 수치가 안 오면 **한도 도달 직접 표시**를 사용할 수 있으며, 직접 입력한 상태임을 구분합니다. Claude 데스크톱에는 Claude Code의 상태줄 연결이 적용되지 않습니다.
+
+[연결 방법·데이터 출처·저장 위치·한계](docs/usage.md)
+
 ## 빠른 시작
 
 **에이전트의 상태 갱신에는 [Node.js](https://nodejs.org)가 필요합니다.** Windows에서는 위 전용 앱을 권합니다. 아래 경량 설치는 설치된 브라우저의 앱 모드를 사용하며, skills CLI는 스킬만 설치합니다.
@@ -79,7 +87,7 @@ curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh |
 npx skills add wonby1n/Tidewatch
 ```
 
-**직접 설치**: [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip)을 받아서 `tidewatch` 폴더를 아래 위치에 풀고, `tidewatch/scripts/tidewatch.mjs`를 `~/.tidewatch/tidewatch.mjs`로 복사하면 돼요.
+**직접 설치**: [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip)을 받아서 `tidewatch` 폴더를 아래 위치에 풀고, `tidewatch/scripts/tidewatch.mjs`와 `tidewatch/scripts/usage.mjs`를 `~/.tidewatch/`에 함께 복사하면 돼요.
 
 | 에이전트 | 스킬 폴더 |
 |---|---|

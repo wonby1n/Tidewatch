@@ -47,6 +47,14 @@ Open **Tidewatch** from your desktop. Existing session files in `~/.tidewatch` a
 
 For development: `npm start`. For the isolated desktop smoke check, set `TIDEWATCH_DIR` to a temporary folder and run `npm run test:desktop`.
 
+## Models and usage in the header
+
+The top panel shows each agent's recent model, available 5-hour/weekly quota usage and reset times, and recent-session token counters. Codex uses its installed CLI's official account read API. Claude Code can forward its official status-line data with **사용량 연결** (Connect usage); an existing custom status line is preserved.
+
+Unknown and stale values are labeled. Token counters are separate from subscription quotas. Use the manual limit flag when the provider has stopped responding; it is labeled as manually reported. Claude Desktop does not provide the Claude Code status-line integration.
+
+[Data sources, setup, privacy, and limitations](docs/usage.md)
+
 ## Quick start
 
 **Requires [Node.js](https://nodejs.org) for agent updates.** On Windows, use the standalone desktop app above. The lightweight installer below uses an installed browser in app mode; the skills CLI installs the skill only.
@@ -82,7 +90,7 @@ curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh |
 npx skills add wonby1n/Tidewatch
 ```
 
-**Manual**: download [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip), unzip the `tidewatch` folder into the skill folder below, and copy `tidewatch/scripts/tidewatch.mjs` to `~/.tidewatch/tidewatch.mjs`.
+**Manual**: download [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip), unzip the `tidewatch` folder into the skill folder below, and copy both `tidewatch/scripts/tidewatch.mjs` and `tidewatch/scripts/usage.mjs` into `~/.tidewatch/`.
 
 | Agent | Skill folder |
 |---|---|
