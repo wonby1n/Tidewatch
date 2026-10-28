@@ -45,7 +45,7 @@ irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
 ```
 
-**직접 설치**: [Releases](https://github.com/wonby1n/tidewatch/releases)에서 `tidewatch-skill.zip`을 받아서 `tidewatch` 폴더를 아래 위치에 풀면 돼요.
+**직접 설치**: [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip)을 받아서 `tidewatch` 폴더를 아래 위치에 풀고, `tidewatch/scripts/tidewatch.mjs`를 `~/.tidewatch/tidewatch.mjs`로 복사하면 돼요.
 
 | 에이전트 | 스킬 폴더 |
 |---|---|
