@@ -98,4 +98,32 @@ check('finished sessions older than a day are cleaned up on build', () => {
   assert.ok(fs.existsSync(path.join(sessions, 'trendot-cards.json')));
 });
 
+check('notifications fire once when a session becomes waiting, and can be turned off', () => {
+  if (process.platform === 'win32') return;
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'tw-bin-'));
+  const out = path.join(bin, 'calls.txt');
+  fs.writeFileSync(path.join(bin, 'notify-send'), `#!/bin/sh\necho "$3" >> "${out}"\n`, { mode: 0o755 });
+  const envN = { ...env, PATH: `${bin}:${process.env.PATH}`, TIDEWATCH_NO_NOTIFY: '' };
+  delete envN.TIDEWATCH_NO_NOTIFY;
+  const runN = (...args) => execFileSync(process.execPath, [script, ...args], { env: envN, encoding: 'utf8' }).trim();
+  const wait = () => { const end = Date.now() + 1500; while (Date.now() < end && !fs.existsSync(out)) {} };
+  const p = path.join(sessions, 'ping.json');
+  fs.writeFileSync(p, JSON.stringify({ title: '알림 테스트', status: 'working', now: 'a' }));
+  runN('build');
+  fs.writeFileSync(p, JSON.stringify({ title: '알림 테스트', status: 'waiting', needsYou: '골라줘' }));
+  runN('build'); wait();
+  runN('build');
+  const calls = () => (fs.existsSync(out) ? fs.readFileSync(out, 'utf8').trim().split('\n').filter(Boolean) : []);
+  const end = Date.now() + 500; while (Date.now() < end) {}
+  assert.equal(calls().filter((c) => c.includes('알림 테스트')).length, 1);
+  assert.match(runN('notify', 'off'), /꺼짐/);
+  fs.writeFileSync(p, JSON.stringify({ title: '알림 테스트', status: 'done', now: '끝' }));
+  runN('build');
+  const end2 = Date.now() + 500; while (Date.now() < end2) {}
+  assert.equal(calls().filter((c) => c.includes('알림 테스트')).length, 1);
+  assert.match(runN('notify', 'on'), /켜짐/);
+  assert.equal(data().settings.notify, true);
+  run('remove', 'ping');
+});
+
 console.log(`${passed} checks passed · board: ${path.join(dir, 'tidewatch.html')}`);

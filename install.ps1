@@ -40,6 +40,7 @@ New-Item -ItemType Directory -Force -Path $Board | Out-Null
 Copy-Item (Join-Path $Src 'scripts\tidewatch.mjs') (Join-Path $Board 'tidewatch.mjs') -Force
 $Icon = Join-Path $Board 'tidewatch.ico'
 Copy-Item (Join-Path $Src 'assets\tidewatch.ico') $Icon -Force
+Copy-Item (Join-Path $Src 'assets\tidewatch.png') (Join-Path $Board 'tidewatch.png') -Force
 $Page = node (Join-Path $Board 'tidewatch.mjs') build
 if ($Tmp) { Remove-Item -Recurse -Force $Tmp }
 

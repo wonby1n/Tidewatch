@@ -12,6 +12,16 @@ const SESS = path.join(ROOT, 'sessions');
 const HIST = path.join(ROOT, '.history');
 const PAGE = path.join(ROOT, 'tidewatch.html');
 const DATA = path.join(ROOT, 'board-data.js');
+const SETTINGS = path.join(ROOT, 'settings.json');
+const NOTIFY_STATES = ['waiting', 'blocked', 'done'];
+
+function settings() {
+  const s = readJson(SETTINGS, {});
+  return {
+    notify: s.notify !== false,
+    notifyOn: Array.isArray(s.notifyOn) ? s.notifyOn.filter((x) => NOTIFY_STATES.includes(x)) : NOTIFY_STATES,
+  };
+}
 
 function ensureDirs() {
   fs.mkdirSync(SESS, { recursive: true });
@@ -72,7 +82,10 @@ function build() {
   ensureDirs();
   const now = Date.now();
   autoPrune(now);
-  const json = JSON.stringify({ sessions: load(now), builtAt: now }).replace(/</g, '\\u003c');
+  const sessions = load(now);
+  const conf = settings();
+  notifyChanges(sessions, conf);
+  const json = JSON.stringify({ sessions, builtAt: now, settings: conf }).replace(/</g, '\\u003c');
   writeAtomic(DATA, `window.__TIDE(${json});`);
   writeAtomic(PAGE, TEMPLATE.replace('__DATA__', () => json));
   return PAGE;
@@ -124,10 +137,55 @@ function autoPrune(now) {
   }
 }
 
+/** 상태가 '너 차례·막힘·끝'으로 바뀐 순간에만 OS 알림을 한 번 띄운다 */
+function notifyChanges(sessions, conf) {
+  for (const s of sessions) {
+    const file = path.join(HIST, `${s.id}.status`);
+    let prev = null;
+    try { prev = fs.readFileSync(file, 'utf8'); } catch {}
+    const status = String(s.status ?? 'working');
+    if (prev === status) continue;
+    fs.writeFileSync(file, status);
+    if (!conf.notify || !conf.notifyOn.includes(status) || process.env.TIDEWATCH_NO_NOTIFY) continue;
+    const head = { waiting: '🟠 너 차례', blocked: '🔴 막힘', done: '🟢 끝' }[status];
+    const title = `${head} · ${s.title || s.id}`;
+    const body = status === 'waiting' ? (s.needsYou || s.now) : status === 'blocked' ? (s.needsYou || s.error?.where || s.now) : s.now;
+    toast(title, String(body ?? '').slice(0, 200));
+  }
+}
+
+function toast(title, body) {
+  const done = () => {};
+  try {
+    if (process.platform === 'win32') {
+      const xml = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
+      const ps = (t) => `'${t.replace(/'/g, "''")}'`;
+      const icon = path.join(ROOT, 'tidewatch.png');
+      const logo = fs.existsSync(icon) ? `<image placement="appLogoOverride" src="${xml(pathToFileURL(icon).href)}"/>` : '';
+      const doc = `<toast activationType="protocol" launch="${xml(pathToFileURL(PAGE).href)}"><visual><binding template="ToastGeneric"><text>${xml(title)}</text><text>${xml(body)}</text>${logo}</binding></visual></toast>`;
+      const script = [
+        '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null',
+        '[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null',
+        '$x = New-Object Windows.Data.Xml.Dom.XmlDocument',
+        `$x.LoadXml(${ps(doc)})`,
+        "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show([Windows.UI.Notifications.ToastNotification]::new($x))",
+      ].join('\n');
+      const encoded = Buffer.from(script, 'utf16le').toString('base64');
+      spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', done).unref();
+    } else if (process.platform === 'darwin') {
+      const q = (t) => `"${t.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+      spawn('osascript', ['-e', `display notification ${q(body)} with title ${q(title)}`], { detached: true, stdio: 'ignore' }).on('error', done).unref();
+    } else {
+      spawn('notify-send', ['-a', 'Tidewatch', title, body], { detached: true, stdio: 'ignore' }).on('error', done).unref();
+    }
+  } catch {}
+}
+
 function remove(id) {
   const safe = path.basename(id);
   fs.rmSync(path.join(SESS, `${safe}.json`), { force: true });
   fs.rmSync(path.join(HIST, `${safe}.json`), { force: true });
+  fs.rmSync(path.join(HIST, `${safe}.status`), { force: true });
 }
 
 function main() {
@@ -138,13 +196,23 @@ function main() {
     case 'open': return console.log(open());
     case 'app': return console.log(app());
     case 'path': return console.log(SESS);
+    case 'notify': {
+      // notify on | off | status | only waiting,blocked
+      const cur = readJson(SETTINGS, {});
+      if (arg === 'on' || arg === 'off') cur.notify = arg === 'on';
+      else if (arg === 'only') cur.notifyOn = String(process.argv[4] ?? '').split(',').filter((x) => NOTIFY_STATES.includes(x));
+      else if (arg && arg !== 'status') break;
+      if (arg && arg !== 'status') { writeAtomic(SETTINGS, JSON.stringify(cur, null, 2)); build(); }
+      const conf = settings();
+      return console.log(`알림 ${conf.notify ? '켜짐' : '꺼짐'} · ${conf.notifyOn.join(', ') || '없음'}`);
+    }
     case 'remove':
       if (!arg) break;
       remove(arg);
       return console.log(build());
     case 'prune': return console.log(build());
   }
-  console.error('usage: tidewatch.mjs build | open | app | path | remove <id> | prune');
+  console.error('usage: tidewatch.mjs build | open | app | path | remove <id> | prune | notify on|off|status|only <waiting,blocked,done>');
   process.exit(1);
 }
 
@@ -224,6 +292,7 @@ html[data-size=l] .grid{zoom:1.18}
 .right{display:flex;gap:4px;align-items:center}
 .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);font-family:inherit;font-size:12px;font-weight:700;padding:6px 10px;border-radius:10px;cursor:pointer}
 .btn:hover{background:var(--chip)}
+.bell{font-size:12px;font-weight:700;color:var(--sub);padding:6px 4px;cursor:help}
 .badge{flex:none;font-size:12px;font-weight:800;color:#fff;background:var(--c);padding:3px 10px;border-radius:99px}
 .lbl{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--sub)}
 .you{margin-top:12px;background:var(--youbg);border-left:4px solid var(--you);padding:10px 12px;border-radius:10px;font-weight:700}
@@ -287,6 +356,7 @@ html[data-size=l] .grid{zoom:1.18}
   <div class="ctrl">
     <div class="seg" id="size" role="group" aria-label="크기"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button></div>
     <div class="seg" id="theme" role="group" aria-label="테마"><button data-v="auto">자동</button><button data-v="light">라이트</button><button data-v="dark">다크</button></div>
+    <span class="bell" id="bell"></span>
     <button class="btn" id="clear">끝난 카드 정리</button>
     <span class="meta" id="meta"></span>
   </div>
@@ -391,6 +461,9 @@ function render(D){
   $('sum').innerHTML=Object.entries(ST).map(([k,v])=>'<span class="pill" style="--c:'+v[1]+'"><i></i>'+v[0]+' '+n(k)+'</span>').join('')+(ss.length?'<span class="hint">봇을 누르면 색이 바뀌어요</span>':'');
   const need=n('waiting')+n('blocked');
   document.title=(need?'('+need+') ':'')+'Tidewatch';
+  const conf=D.settings||{};const b=$('bell');
+  b.textContent=conf.notify===false?'🔕 알림 꺼짐':'🔔 알림 켜짐';
+  b.title=conf.notify===false?'세션에 "알림 켜줘"라고 하면 켜져요':'너 차례·막힘·끝이 되면 알림이 와요. 세션에 "알림 꺼줘"라고 하면 꺼져요';
   $('meta').textContent='실시간 · '+new Date().toLocaleTimeString('ko-KR');
 }
 function seg(id,key,def,apply){const g=$(id);const set=v=>{store.set(key,v);apply(v);g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v)))};g.addEventListener('click',e=>{const b=e.target.closest('button');if(b)set(b.dataset.v)});set(store.get(key,def))}

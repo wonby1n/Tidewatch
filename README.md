@@ -29,6 +29,14 @@ Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으
 - 봇을 누르면 색이 바뀌어요. 세션마다 처음부터 다른 색이에요
 - 카드의 ✕, 또는 **끝난 카드 정리**로 지우기. 끝난 지 하루 지난 세션은 알아서 정리돼요
 
+## 알림
+
+세션이 **너 차례·막힘·끝**으로 바뀌는 순간 OS 알림이 한 번 와요 (Windows 토스트, macOS 알림 센터, Linux notify-send). 현황판 창을 닫아 둬도 와요.
+
+- 끄기·켜기: 아무 세션에 "알림 꺼줘 / 켜줘", 또는 `node ~/.tidewatch/tidewatch.mjs notify off|on`
+- 골라 받기: `node ~/.tidewatch/tidewatch.mjs notify only waiting,blocked`
+- 현황판 위쪽에 🔔/🔕로 지금 상태가 보여요
+
 ## 봇 읽는 법
 
 | 봇 | 상태 | 뜻 |
