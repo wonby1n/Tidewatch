@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v7 — https://github.com/wonby1n/tidewatch
+// Tidewatch v8 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -234,7 +234,7 @@ function serve() {
       }
       if (url.pathname.startsWith('/api/') && req.headers['x-tidewatch-token'] !== token) return json(403, { error: 'token' });
       if (req.method === 'GET' && url.pathname === '/api/status') {
-        return json(200, { platform: process.platform, pet: petRunning(), settings: settings(), agents: agents(), usage: usage.snapshot() });
+        return json(200, { platform: process.platform, pet: petRunning(), settings: settings(), agents: agents(), usage: usage.snapshot(), activity: readJson(path.join(ROOT, 'activity.json'), { events: [] }).events, linkedSessions: Object.keys(readJson(path.join(ROOT, 'session-links.json'), {})) });
       }
       if (req.method === 'POST') {
         let body = '';
@@ -246,8 +246,8 @@ function serve() {
             if (url.pathname === '/api/usage/limited') { usage.setLimited(String(input.agent), input.limited); return json(200, { usage: usage.snapshot() }); }
             if (url.pathname === '/api/usage/claude-connect') return json(200, usage.connectClaude());
             if (url.pathname === '/api/pet') {
-              if (input.on) { const msg = pet(); return json(200, { ok: true, message: msg }); }
-              petStop(); return json(200, { ok: true });
+              if (input.on) { const msg = await startPet(); return json(200, { ok: true, message: msg }); }
+              await stopPet(); return json(200, { ok: true });
             }
             if (url.pathname === '/api/notify') {
               const cur = readJson(SETTINGS, {}); cur.notify = !!input.on;
@@ -294,11 +294,14 @@ function notifyChanges(sessions, conf) {
     const head = { waiting: '🟠 너 차례', blocked: '🔴 막힘', done: '🟢 끝' }[status];
     const title = `${head} · ${s.title || s.id}`;
     const body = status === 'waiting' ? (s.needsYou || s.now) : status === 'blocked' ? (s.needsYou || s.error?.where || s.now) : s.now;
-    toast(title, String(body ?? '').slice(0, 200));
+    const lease = readJson(path.join(ROOT, 'desktop-notifier.json'), {});
+    let nativeApp = false;
+    if (lease.expiresAt > Date.now() && Number.isInteger(lease.pid)) { try { process.kill(lease.pid, 0); nativeApp = true; } catch {} }
+    if (!nativeApp) toast(title, String(body ?? '').slice(0, 200), s.id);
   }
 }
 
-function toast(title, body) {
+function toast(title, body, sessionId) {
   const done = () => {};
   try {
     if (process.platform === 'win32') {
@@ -306,7 +309,9 @@ function toast(title, body) {
       const ps = (t) => `'${t.replace(/'/g, "''")}'`;
       const icon = path.join(ROOT, 'tidewatch.png');
       const logo = fs.existsSync(icon) ? `<image placement="appLogoOverride" src="${xml(pathToFileURL(icon).href)}"/>` : '';
-      const doc = `<toast activationType="protocol" launch="${xml(pathToFileURL(PAGE).href)}"><visual><binding template="ToastGeneric"><text>${xml(title)}</text><text>${xml(body)}</text>${logo}</binding></visual></toast>`;
+      const desktop = readJson(path.join(ROOT, 'desktop.json'), {});
+      const launch = sessionId && desktop.protocolRegistered && desktop.executable && fs.existsSync(desktop.executable) ? 'tidewatch://session/' + encodeURIComponent(sessionId) : pathToFileURL(PAGE).href;
+      const doc = `<toast activationType="protocol" launch="${xml(launch)}"><visual><binding template="ToastGeneric"><text>${xml(title)}</text><text>${xml(body)}</text>${logo}</binding></visual></toast>`;
       const script = [
         '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null',
         '[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null',
@@ -332,8 +337,32 @@ function pet() {
   if (!fs.existsSync(file)) return `${file}이 없어요. 설치 명령을 다시 실행해 주세요.`;
   build();
   if (petRunning()) return '펫이 이미 떠 있어요.';
-  spawn('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', file], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
+  const log=path.join(ROOT,'pet-error.log');
+  fs.rmSync(path.join(ROOT,'pet-ready.json'),{force:true});
+  const errorFile=fs.openSync(log,'w');
+  try {
+    spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', file, '-Dir', ROOT], { detached: true, stdio: ['ignore','ignore',errorFile], windowsHide: true }).on('error', err => { try{fs.appendFileSync(log,err.message)}catch{} }).unref();
+  } finally {fs.closeSync(errorFile)}
   return '펫을 띄웠어요. 작업표시줄 위를 보세요.';
+}
+
+async function startPet(){
+  if(process.platform!=='win32')throw new Error('펫은 Windows에서 사용할 수 있습니다.');
+  if(petRunning())return '펫이 이미 실행 중입니다.';
+  if(!fs.existsSync(path.join(ROOT,'pet.ps1')))throw new Error('펫 실행 파일이 없습니다. 최신 설치 파일로 다시 설치하세요.');
+  pet();
+  for(let attempt=0;attempt<70;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,100));
+    const ready=readJson(path.join(ROOT,'pet-ready.json'),{});
+    if(petRunning()&&ready.ready===true&&Number(ready.pid)===Number(fs.readFileSync(PET_PID,'utf8').trim()))return '펫 실행을 확인했습니다.';
+  }
+  throw new Error('펫 시작을 확인하지 못했습니다. 다시 시도하거나 pet-error.log를 확인하세요.');
+}
+
+async function stopPet(){
+  petStop();
+  for(let attempt=0;attempt<20;attempt++){if(!petRunning())return;await new Promise(resolve=>setTimeout(resolve,100))}
+  throw new Error('펫 종료를 확인하지 못했습니다. 잠시 후 다시 시도하세요.');
 }
 
 function remove(id) {
@@ -587,6 +616,10 @@ header{align-items:center;flex-wrap:nowrap;padding:24px 24px 20px;gap:16px}
 @media(max-width:520px){header{padding:20px 16px 18px}.usage{padding:0 16px 18px}.usage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.usage-head{align-items:flex-start;flex-direction:column;gap:1px}.usage-model{font-size:11px}.usage-card>summary{padding:10px}.usage-preview{font-size:9px}.usage-meter{max-width:35px}.grid{grid-template-columns:1fr}.group,.sum{padding-left:16px;padding-right:16px}}
 /* Memo mode prioritizes the state, the next action, and explicit progress. */
 #mini{padding:14px 12px 20px}.m-top{margin-bottom:10px}.m-top b{flex:1}.m-stats{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px;font-size:10px;color:var(--sub)}.m-stats span{display:flex;align-items:center;gap:4px}.m-stats i{width:5px;height:5px;border-radius:50%;background:var(--c)}.m-stats b{font-weight:750;color:var(--ink)}
+.response-icon{width:14px;height:14px;vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.m-badge .response-icon{margin-right:4px}.card.waiting .bubble{border-radius:7px;width:25px;height:23px;line-height:23px;padding:0}.bubble .response-icon{width:15px;height:15px;animation:none!important;vertical-align:-3px}
+.session-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.session-actions button{font:inherit;font-size:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 8px;border-radius:7px;cursor:pointer}.session-actions .open-session{background:var(--ink);border-color:var(--ink);color:var(--card);font-weight:650}.m-row .session-actions{margin-top:9px}.session-focus{outline:2px solid #5188b3;outline-offset:3px}
+.activity-note{display:flex;align-items:flex-start;gap:10px;margin:0 24px 16px;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-left:3px solid #36855b;border-radius:10px;font-size:11px}.activity-note.waiting{border-left-color:#b56b2f}.activity-note.blocked{border-left-color:#b43d47}.activity-copy{flex:1;min-width:0}.activity-copy b{display:block;font-size:11px}.activity-copy p{margin:3px 0;color:var(--sub);line-height:1.6;overflow-wrap:anywhere}.activity-copy small{color:var(--sub);font-size:9px}.activity-note button{font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 7px;background:var(--chip);color:var(--ink);cursor:pointer;font-size:10px}.activity-note .dismiss{border:0;background:none;padding:2px;color:var(--sub)}#mini .activity-note{margin:0 0 10px}
+dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-radius:15px;background:var(--card);color:var(--ink);padding:20px;box-shadow:0 16px 70px #0003}dialog::backdrop{background:#0005}dialog h2{font-size:16px;margin:0 0 8px}dialog p{font-size:12px;color:var(--sub);line-height:1.65}dialog input{width:100%;font:inherit;font-size:12px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.action-toast{position:fixed;z-index:100;bottom:12px;left:12px;right:12px;background:var(--ink);color:var(--card);padding:11px 14px;border-radius:10px;font-size:12px;box-shadow:0 5px 25px #0002}.action-toast:empty{display:none}html[data-mode=mini] body>dialog[open],html[data-mode=mini] body>.action-toast:not(:empty){display:block!important}@media(max-width:520px){.activity-note{margin-left:16px;margin-right:16px}}
 .m-row{padding:11px 12px 12px 15px;margin-bottom:9px;border-radius:12px;outline:none}.m-row:before{width:3px}.m-row:focus-visible{outline:2px solid #4b8db7;outline-offset:2px}.m-row.waiting{border-color:color-mix(in srgb,#bd6c36 48%,var(--line))}.m-row.blocked{border-color:color-mix(in srgb,#c74f55 48%,var(--line))}
 .m-h{justify-content:space-between;gap:7px}.m-badge{font-size:11px;line-height:1.4;font-weight:750;padding:3px 8px;border-radius:6px;color:#fff;background:#235f9e}.m-row.waiting .m-badge{background:#96511e}.m-row.blocked .m-badge{background:#b43d47}.m-row.done .m-badge{background:#24724a}
 .m-origin{font-size:10px;color:var(--sub);flex:1}.m-title{margin-top:8px;font-size:14px;font-weight:750;line-height:1.45;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m-ago{font-size:10px}
@@ -621,13 +654,17 @@ header{align-items:center;flex-wrap:nowrap;padding:24px 24px 20px;gap:16px}
   <p class="usage-note" id="usageMessage" role="status"></p>
 </section>
 <div class="sum" id="sum"></div>
+<div id="activity" aria-live="polite"></div>
 <div class="hint2" id="hint" hidden>펫·알림·연결 관리는 바탕화면의 Tidewatch 아이콘으로 열면 쓸 수 있어요</div>
 <div id="board"></div>
 <div id="mini" hidden></div>
 <div class="empty" id="empty" hidden>아직 바다에 나간 세션이 없어요. Claude Code나 Codex에서 <code>$tidewatch</code> 또는 "타이드워치 켜줘"라고 해 보세요.</div>
+<dialog id="linkDialog"><form id="linkForm"><h2>Claude 대화 연결</h2><p>이 작업의 Claude 대화 또는 Code 세션 링크를 넣으세요. 연결하지 않으면 Claude 앱만 열리며, 정확한 세션은 직접 선택해야 합니다.</p><input id="sessionLink" type="url" placeholder="https://claude.ai/code/session_…" aria-label="Claude 대화 링크" required><p id="linkError" role="alert"></p><div class="dialog-actions"><button class="btn" id="linkCancel" type="button">취소</button><button class="btn" type="submit">연결 저장</button></div></form></dialog>
+<div class="action-toast" id="actionToast" role="status"></div>
 <script>
 const ST={waiting:['너 차례','#ff7a3d',0,'?'],blocked:['막힘','#ef4444',1,'!'],working:['작업 중','#3b82f6',2,''],done:['끝','#22c55e',3,'✓']};
 const AGENT={claude:'Claude',codex:'Codex'};
+const RESPONSE_ICON='<svg class="response-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-5l-4 4v-4H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M13 6H7m0 0 2-2M7 6l2 2"/></svg>';
 const BOTC=['#ffffff','#ffd6a5','#caffbf','#a0e7ff','#cdb4ff','#ffc6e5','#fff3a0','#ffb3b3'];
 const store={get(k,d){try{const v=localStorage.getItem('tw.'+k);return v===null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem('tw.'+k,v)}catch(e){}}};
 const hash=s=>{let h=7;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)};
@@ -669,12 +706,12 @@ function fill(el,s){
   el.style.setProperty('--c',color);
   const lv=(10+pct*0.6)+'%';
   if(el._new){requestAnimationFrame(()=>requestAnimationFrame(()=>el.style.setProperty('--lv',lv)));el._new=false}else el.style.setProperty('--lv',lv);
-  el.querySelector('.bubble').textContent=sleep?'z':mark;
+  el.querySelector('.bubble').innerHTML=sleep?'z':s.st==='waiting'?RESPONSE_ICON:esc(mark);
   const agent=s.agent?'<span class="agent">'+esc(AGENT[String(s.agent).toLowerCase()]||s.agent)+'</span>':'';
   const err=s.error&&(s.error.message||s.error.where);
   const cur=steps.findIndex(x=>x.state==='doing'||x.state==='error');
   const next=steps.find((x,i)=>x.state==='todo'&&i>cur);
-  const html='<div class="top"><div class="proj">'+agent+'</div><span class="right"><span class="badge">'+label+'</span><button class="x" title="이 카드 지우기" aria-label="이 카드 지우기">✕</button></span></div>'
+  const html='<div class="top"><div class="proj">'+agent+'</div><span class="right"><span class="badge">'+(s.st==='waiting'?RESPONSE_ICON+' ':'')+label+'</span><button class="x" title="이 카드 지우기" aria-label="이 카드 지우기">✕</button></span></div>'
    +'<div class="title">'+esc(s.title||s.id)+'</div>'
    +(s.task?'<div class="task">이번 일 · <b>'+esc(s.task)+'</b></div>':'')
    +(s.now?'<div class="now"><span class="lbl"><i class="dot"></i>'+(s.st==='done'?'결과':'지금')+'</span><p>'+esc(s.now)+'</p></div>':'')
@@ -684,7 +721,7 @@ function fill(el,s){
      +'<div class="track-txt"><b>'+done+' / '+steps.length+'</b> 단계'+(s.st==='done'?' · 모두 끝':next?' · 다음: '+esc(next.text):'')+'</div>'
      +'<ol class="road">'+steps.map(x=>{const st=x.state||'todo';const t=stepTime(x,timing[x.text]);return '<li class="'+esc(st)+'"><span class="n"></span><span class="tx">'+esc(x.text)+'</span>'+(st==='doing'?'<span class="here">지금 여기</span>':st==='error'?'<span class="here">여기서 막힘</span>':'')+(t?'<span class="t">'+t+'</span>':'')+(x.detail?'<small>'+esc(x.detail)+'</small>':'')+'</li>'}).join('')+'</ol>':'')
    +(log.length?'<details><summary>기록 '+log.length+'개</summary><ul class="log">'+log.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul></details>':'')
-   +'<div class="foot"><span>'+esc(s.goal||'')+'</span><span class="ago">'+(sleep?'30분째 조용함 · ':'')+ago(s.mtime)+'</span></div>';
+   +sessionActions(s)+'<div class="foot"><span>'+esc(s.goal||'')+'</span><span class="ago">'+(sleep?'30분째 조용함 · ':'')+ago(s.mtime)+'</span></div>';
   if(el._html!==html){
     const c=el.querySelector('.content');const open=c.querySelector('details')?.open;
     c.innerHTML=html;el._html=html;
@@ -742,7 +779,8 @@ $('clear').addEventListener('click',()=>{last.sessions.filter(s=>s.status==='don
 // ---- 앱 기능 (로컬 서버로 열었을 때만) ----
 const API=location.protocol.startsWith('http')&&window.TW_TOKEN;
 let status=null;
-async function api(p,body){const r=await fetch(p,{method:body?'POST':'GET',headers:{'x-tidewatch-token':window.TW_TOKEN,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+async function api(p,body){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),18000);try{const r=await fetch(p,{method:body?'POST':'GET',headers:{'x-tidewatch-token':window.TW_TOKEN,'content-type':'application/json'},body:body?JSON.stringify(body):undefined,signal:controller.signal});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}catch(err){if(err.name==='AbortError')throw new Error('응답이 늦어 요청을 중단했습니다. 다시 시도해주세요.');throw err}finally{clearTimeout(timer)}}
+let petBusy=false;
 const NAMES={claude:'Claude Code',codex:'Codex'};
 const MINI=new URLSearchParams(location.search).has('mini');
 if(MINI)document.documentElement.dataset.mode='mini';
@@ -761,23 +799,25 @@ function renderMini(ss){
     const message=s.st==='waiting'?(s.needsYou||s.now||'확인이나 답변이 필요합니다'):s.st==='blocked'?(s.error?.message||current?.detail||s.now||'오류 내용을 확인하세요'):(s.now||s.task||'');
     const line=message?'<div class="m-callout"><strong>'+heading+'</strong><p>'+esc(String(message).split(String.fromCharCode(10))[0])+'</p></div>':'';
     const step=s.st==='blocked'&&current?'막힌 단계 · '+current.text:current?'현재 단계 · '+current.text:next?'다음 단계 · '+next.text:'';
-    const icon={waiting:'? ',blocked:'! ',working:'● ',done:'✓ '}[s.st];
+    const icon={waiting:RESPONSE_ICON,blocked:'! ',working:'● ',done:'✓ '}[s.st];
     return '<article class="m-row '+s.st+'" role="button" tabindex="0" style="--c:'+color+'" title="'+esc((s.task?s.task+' — ':'')+(s.now||''))+'"><div class="m-h"><span class="m-badge">'+icon+names[s.st]+'</span><span class="m-origin">'+esc(AGENT[s.agent]||s.agent||'')+'</span><span class="m-ago">'+ago(s.mtime)+'</span></div><div class="m-title">'+esc(s.title||s.id)+'</div>'+line
       +(s.st==='blocked'&&s.error?.where?'<div class="m-location">'+esc(s.error.where)+'</div>':'')
       +'<div class="m-progress"><b>'+(steps.length?finished+' / '+steps.length+' 단계 완료':s.st==='done'?'작업 완료':'단계 정보 없음')+'</b><em>'+(percent===null?'진행률 미확인':percent+'%')+'</em></div>'
       +(steps.length?'<div class="track m" role="progressbar" aria-label="완료한 단계 비율" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'">'+steps.map(x=>'<i class="'+esc(x.state||'todo')+'"></i>').join('')+'</div>':'')
       +(step?'<div class="m-step">'+esc(step)+'</div>':'')
-      +(s.st==='working'&&Date.now()-s.mtime>30*60000?'<div class="m-stale">30분 이상 갱신되지 않은 상태입니다</div>':'')+'</article>';
+      +(s.st==='working'&&Date.now()-s.mtime>30*60000?'<div class="m-stale">30분 이상 갱신되지 않은 상태입니다</div>':'')+sessionActions(s)+'</article>';
   }).join('');
-  $('mini').innerHTML='<div class="m-top"><b>Tidewatch</b><button type="button" id="bigBtn">크게 보기</button></div><div class="m-stats">'+pills+'</div>'+(rows||'<div class="m-empty">진행 중인 세션이 없어요 🌊</div>');
+  $('mini').innerHTML='<div class="m-top"><b>Tidewatch</b><button type="button" id="bigBtn">크게 보기</button></div><div class="m-stats">'+pills+'</div>'+activityMarkup()+(rows||'<div class="m-empty">진행 중인 세션이 없어요 🌊</div>');
 }
-$('mini').addEventListener('click',e=>{if(e.target.closest('#bigBtn')||e.target.closest('.m-row'))window.open(bigUrl(),'tidewatch-big')});
+$('mini').addEventListener('click',e=>{if(e.target.closest('[data-open-session],[data-link-session],[data-dismiss-event]'))return;if(e.target.closest('#bigBtn')||e.target.closest('.m-row'))window.open(bigUrl(),'tidewatch-big')});
 $('mini').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('.m-row')){e.preventDefault();e.target.click()}});
 $('miniBtn').addEventListener('click',()=>window.open(bigUrl()+'?mini=1','tidewatch-mini','popup,width=360,height=520'));
 function paintPanel(){
   if(!status)return;
+  $('activity').innerHTML=activityMarkup();
+  if(MINI)render(last);
   paintUsage();
-  const pb=$('petBtn');pb.hidden=status.platform!=='win32';pb.classList.toggle('on',!!status.pet);pb.querySelector('span').textContent=status.pet?'펫 켜짐':'펫 꺼짐';
+  const pb=$('petBtn');pb.hidden=status.platform!=='win32';pb.classList.toggle('on',!!status.pet);pb.querySelector('span').textContent=petBusy?'펫 확인 중':status.pet?'펫 켜짐':'펫 꺼짐';
   const nb=$('notifyBtn');const on=status.settings&&status.settings.notify!==false;nb.classList.toggle('on',on);nb.querySelector('span').textContent=on?'알림 켜짐':'알림 꺼짐';
   for(const k of Object.keys(NAMES)){
     const a=(status.agents||{})[k]||{};const el=$('conn-'+k);el.classList.toggle('ok',!!a.installed);
@@ -811,8 +851,33 @@ function paintUsage(){
       +'<button data-usage="limited" data-agent="'+agent+'" data-limited="'+(!u.manualLimited)+'" type="button">'+(u.manualLimited?'직접 표시 해제':'한도 도달 직접 표시')+'</button></div></div></details>';
   }).join('');
 }
+function sessionActions(s){
+  if(!window.tidewatch||!['waiting','blocked','done'].includes(s.status||s.st))return '';
+  const claude=s.agent==='claude'&&s.origin!=='terminal';
+  const linked=(status?.linkedSessions||[]).includes(s.id)||!!s.sessionUrl;
+  return '<div class="session-actions"><button class="open-session" type="button" data-open-session="'+esc(s.id)+'">'+(claude?(linked?'대화로 이동 ↗':'Claude 열기 ↗'):'작업 확인 ↗')+'</button>'
+    +(claude?'<button type="button" data-link-session="'+esc(s.id)+'">대화 링크 연결</button>':'')+'</div>';
+}
+function activityMarkup(){
+  const event=(status?.activity||[]).find(e=>Date.now()-e.at<10*60000&&store.get('dismiss.event.'+e.key,'0')!=='1');
+  if(!event)return '';
+  const label={done:'방금 완료',waiting:'응답 필요',blocked:'작업 막힘'}[event.status]||'최근 소식';
+  return '<aside class="activity-note '+esc(event.status)+'"><div class="activity-copy"><b>'+label+' · '+esc(event.title)+'</b><p>'+esc(event.body)+'</p><small>'+esc(ago(event.at))+'</small></div><button type="button" data-open-session="'+esc(event.sessionId)+'">열기 ↗</button><button type="button" class="dismiss" data-dismiss-event="'+esc(event.key)+'" aria-label="이 소식 닫기">×</button></aside>';
+}
+let actionMessageTimer, linkingSession=null;
+function actionMessage(message){$('actionToast').textContent=message;clearTimeout(actionMessageTimer);actionMessageTimer=setTimeout(()=>{$('actionToast').textContent=''},7000)}
+document.addEventListener('click',async e=>{
+  const open=e.target.closest('[data-open-session]'),link=e.target.closest('[data-link-session]'),dismiss=e.target.closest('[data-dismiss-event]');
+  if(dismiss){store.set('dismiss.event.'+dismiss.dataset.dismissEvent,'1');$('activity').innerHTML=activityMarkup();if(MINI)render(last);return}
+  if(link){linkingSession=link.dataset.linkSession;$('sessionLink').value='';$('linkError').textContent='';$('linkDialog').showModal();return}
+  if(open&&window.tidewatch){open.disabled=true;try{const r=await window.tidewatch.openSession(open.dataset.openSession);if(r.destination==='claude'&&!r.exact)actionMessage('Claude 앱을 열었습니다. 이 카드에는 대화 링크가 없어 세션을 직접 선택해주세요.');else if(r.destination==='board')actionMessage('정확한 원본 창 정보가 없어 작업 카드를 열었습니다.')}catch(err){actionMessage(err.message)}finally{open.disabled=false}}
+});
+$('linkCancel').addEventListener('click',()=>$('linkDialog').close());
+$('linkForm').addEventListener('submit',async e=>{e.preventDefault();if(!window.tidewatch)return;try{await window.tidewatch.saveLink(linkingSession,$('sessionLink').value.trim());$('linkDialog').close();await refreshStatus();render(last);actionMessage('이 카드에 Claude 대화 링크를 연결했습니다.')}catch(err){$('linkError').textContent=err.message}});
+window.addEventListener('tidewatch-focus',e=>{const card=[...document.querySelectorAll('.card')].find(c=>c.dataset.id===e.detail);if(card){card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('session-focus');setTimeout(()=>card.classList.remove('session-focus'),3000)}});
 async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
 if(API){
+  if(window.tidewatch?.onActivity)window.tidewatch.onActivity(event=>{status={...status,activity:[event,...(status?.activity||[]).filter(e=>e.key!==event.key)]};$('activity').innerHTML=activityMarkup();if(MINI)render(last);refreshBoard()});
   $('usageGrid').addEventListener('toggle',e=>{if(e.target.matches('details[data-usage-agent]'))store.set('usage.open.'+e.target.dataset.usageAgent,e.target.open?'1':'0')},true);
   $('usage').hidden=false;
   $('usageRefresh').addEventListener('click',async()=>{const b=$('usageRefresh');b.disabled=true;b.classList.add('refreshing');b.lastElementChild.textContent='확인 중';$('usageMessage').textContent='사용량을 확인하고 있습니다…';try{await api('/api/usage/refresh',{});await refreshStatus();$('usageMessage').textContent=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 확인 완료 · Claude는 마지막 수신 정보입니다. 새 값이 없으면 기존 시각을 유지합니다.'}catch(e){$('usageMessage').textContent='새로고침하지 못했습니다. '+e.message}finally{b.disabled=false;b.classList.remove('refreshing');b.lastElementChild.textContent='새로고침'}});
@@ -822,13 +887,14 @@ if(API){
     await refreshStatus();
   }catch(err){$('usageMessage').textContent=err.message}finally{b.disabled=false}});
   $('panel').hidden=false;$('bell').hidden=true;refreshStatus();setInterval(refreshStatus,5000);
-  $('petBtn').addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;try{await api('/api/pet',{on:!status.pet})}catch(err){b.title=err.message}setTimeout(async()=>{await refreshStatus();b.disabled=false},1500)});
+  $('petBtn').addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;petBusy=true;paintPanel();try{await api('/api/pet',{on:!status?.pet});await refreshStatus()}catch(err){actionMessage(err.message);b.title=err.message}finally{petBusy=false;b.disabled=false;paintPanel()}});
   $('notifyBtn').addEventListener('click',async()=>{try{await api('/api/notify',{on:!(status.settings&&status.settings.notify!==false)})}catch(err){}refreshStatus()});
   $('panel').addEventListener('click',async e=>{const b=e.target.closest('button[data-agent]');if(!b)return;b.disabled=true;b.textContent='연결 중…';try{await api('/api/connect',{agent:b.dataset.agent})}catch(err){b.textContent='실패';b.title=err.message}refreshStatus()});
 }else{$('hint').hidden=false}
 window.__TIDE=render;
 render(__DATA__);
-setInterval(()=>{const s=document.createElement('script');s.src='board-data.js?t='+Date.now();s.onload=s.onerror=()=>s.remove();document.head.appendChild(s)},3000);
+function refreshBoard(){const s=document.createElement('script');s.src='board-data.js?t='+Date.now();s.onload=s.onerror=()=>s.remove();document.head.appendChild(s)}
+setInterval(refreshBoard,3000);
 </script></body></html>`;
 
 main();

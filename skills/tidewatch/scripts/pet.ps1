@@ -1,15 +1,19 @@
 ﻿# Tidewatch 펫 — 작업표시줄 위를 걸어다니면서 전체 세션 현황을 보여준다 (Windows 전용)
 #   powershell -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "%USERPROFILE%\.tidewatch\pet.ps1"
-param([string]$Dir = (Join-Path $HOME '.tidewatch'))
+param([string]$Dir = (Join-Path $HOME '.tidewatch'), [switch]$SmokeTest)
+$ErrorActionPreference = 'Stop'
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
 # 펫은 하나만
-$mutex = New-Object System.Threading.Mutex($false, 'Local\TidewatchPet')
-if (-not $mutex.WaitOne(0)) { return }
+$mutexName = if ($SmokeTest) { 'Local\TidewatchPetTest-' + [guid]::NewGuid() } else { 'Local\TidewatchPet' }
+$mutex = New-Object System.Threading.Mutex($false, $mutexName)
+try { $acquired = $mutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $acquired = $true }
+if (-not $acquired) { return }
 
 # 앱이 펫이 떠 있는지 알 수 있게 번호표를 남긴다
 $pidFile = Join-Path $Dir 'pet.pid'
+$readyFile = Join-Path $Dir 'pet-ready.json'
 try { Set-Content -Path $pidFile -Value $PID -Encoding ASCII } catch {}
 
 [xml]$xaml = @'
@@ -47,6 +51,7 @@ try { Set-Content -Path $pidFile -Value $PID -Encoding ASCII } catch {}
 '@
 
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
+if ($SmokeTest) { $win.Opacity = 0 }
 $n = @{}
 foreach ($name in 'Bubble','BubbleText','Bot','Flip','Tilt','Hop','Ant','Head','EyeL','EyeR','Face','Body','LegL','LegR') { $n[$name] = $win.FindName($name) }
 $brush = { param($hex) (New-Object System.Windows.Media.BrushConverter).ConvertFromString($hex) }
@@ -265,6 +270,15 @@ $poll = New-Object System.Windows.Threading.DispatcherTimer
 $poll.Interval = [TimeSpan]::FromSeconds(2)
 $poll.Add_Tick({ Refresh })
 
-$win.Add_Loaded({ Refresh; $anim.Start(); $poll.Start() })
-$win.Add_Closed({ $anim.Stop(); $poll.Stop(); Remove-Item $pidFile -Force -ErrorAction SilentlyContinue; $mutex.ReleaseMutex() })
+$win.Add_Loaded({
+  Refresh; $anim.Start(); $poll.Start()
+  $ready = @{ pid = $PID; ready = $true; startedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() } | ConvertTo-Json
+  [IO.File]::WriteAllText($readyFile, $ready, [Text.UTF8Encoding]::new($false))
+  if ($SmokeTest) {
+    $result = @{ ready = $true; mood = $state.mood; label = $n.BubbleText.Text } | ConvertTo-Json
+    [IO.File]::WriteAllText((Join-Path $Dir 'pet-test.json'), $result, [Text.UTF8Encoding]::new($false))
+    [void]$win.Dispatcher.BeginInvoke([Action]{ $win.Close() })
+  }
+})
+$win.Add_Closed({ $anim.Stop(); $poll.Stop(); Remove-Item $pidFile,$readyFile -Force -ErrorAction SilentlyContinue; $mutex.ReleaseMutex(); $mutex.Dispose() })
 [void]$win.ShowDialog()

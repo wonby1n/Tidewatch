@@ -2,6 +2,7 @@
   "appId": "io.github.wonby1n.tidewatch",
   "productName": "Tidewatch",
   "artifactName": "Tidewatch-Setup.exe",
+  "protocols": [{ "name": "Tidewatch session", "schemes": ["tidewatch"] }],
   "directories": { "output": "release/installer" },
   "win": {
     "target": [{ "target": "nsis", "arch": ["x64"] }],

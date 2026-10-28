@@ -169,6 +169,8 @@ check('notifications fire once when a session becomes waiting, and can be turned
     st = await (await call('/api/status')).json();
     check('notifications can be switched off from the app', () => assert.equal(st.settings.notify, false));
     await call('/api/notify', { on: true });
+    const missingPet=await call('/api/pet',{on:true});
+    check('a missing pet script is reported as failure rather than successful startup',()=>assert.equal(missingPet.status,400));
     assert.equal((await call('/api/usage/limited', { agent: 'unknown', limited: true })).status, 400);
     await call('/api/usage/limited', { agent: 'claude', limited: true });
     st = await (await call('/api/status')).json();

@@ -54,6 +54,8 @@ description: Tidewatch — a live board for many Claude Code and Codex sessions;
 - `title`: **대주제**. 이 세션이 붙잡고 있는 큰 주제(예: "Pickcase 백업 개선", "Tidewatch 다듬기")로, 카드에 제일 크게 뜬다. 세션 안에서 일이 바뀌어도 주제가 같으면 그대로 둔다.
 - `task`: **이번 일**. 대주제 안에서 지금 맡은 구체적인 일 (예: "백업을 zip으로 바꾸기"). 제목 밑에 작게 뜬다. 같은 세션에서 새 일을 맡으면 이걸 바꾼다.
 - `agent`: 지금 이 세션을 돌리는 에이전트. Claude Code면 `"claude"`, Codex면 `"codex"`. 카드에 배지로 뜬다.
+- `origin` (선택): 실행 환경을 실제로 확인한 경우 `"desktop"` 또는 `"terminal"`. 모르면 생략한다. 터미널에서 시작한 세션을 앱으로 자동 재개하지 않는다.
+- `sessionUrl` (선택): 이 대화의 실제 Claude chat 또는 Code 세션 링크를 알고 있을 때만 기록한다. Tidewatch 카드 ID는 원본 대화 ID가 아니므로 링크를 추측하거나 만들어 넣지 않는다. 링크가 없으면 사용자가 카드의 `대화 링크 연결`로 연결할 수 있다.
 - `status`: `working` 작업 중 / `waiting` 사용자의 답이나 확인이 필요함 / `blocked` 오류나 권한 때문에 더 못 나아감 / `done` 끝
 - `now`: 지금 하는 일 **한 줄**. 카드에서 색깔 박스로 강조되고, 돌아온 사람이 제일 먼저 읽는 줄이다. `done`이면 "결과"로 표시되니 결과를 한 줄로 쓴다.
 - `needsYou`: 사용자가 해야 할 일이나 답해야 할 질문. 없으면 `""`. `waiting`이면 반드시 채우고, 무엇을 골라야 하는지 또는 무엇을 실행해야 하는지까지 구체적으로 쓴다.

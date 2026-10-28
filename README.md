@@ -171,6 +171,12 @@ A small bot walks along the top of your taskbar and tells you how things are goi
 - Drag it anywhere; it remembers the spot. Right-click → back to the taskbar to reset
 - Right-click menu: sticky-note view · full board · notifications · stay still · start with Windows · back to the taskbar · quit
 
+## Completion alerts and app handoff
+
+The desktop app shows a result summary when a session completes, with an OS notification and an in-app recent-activity banner. Claude cards can open the Claude app; connect an actual conversation link for a specific destination. Terminal sessions return to their Tidewatch card; selecting the original terminal tab is not yet supported.
+
+[Notification behavior, app links, and pet troubleshooting](docs/notifications.md)
+
 ## Notifications
 
 You get one OS notification the moment a session becomes **your turn**, **blocked** or **done** (Windows toast, macOS Notification Center, Linux notify-send), even with the board closed.
@@ -183,7 +189,7 @@ You get one OS notification the moment a session becomes **your turn**, **blocke
 | Bot | Status | Meaning |
 |---|---|---|
 | Floating | 🔵 working | busy on its own |
-| `?` and hopping | 🟠 your turn | asked you something or needs a check |
+| Reply badge and hopping | 🟠 your turn | asked you something or needs a check |
 | X eyes, shivering | 🔴 blocked | stopped by an error or a permission |
 | `z`, dozing | 🔵 with yellow text | working, but silent for 30+ minutes |
 | Smiling | 🟢 done | finished |
