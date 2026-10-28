@@ -3,6 +3,7 @@ const { createActivityMonitor, targetFor, saveLink, validId } = require('./activ
 const { launchTerminal, openTerminal } = require('./terminal.cjs');
 const { createProjects } = require('./projects.cjs');
 const { createNotifier } = require('./notifications.cjs');
+const { connectWSL } = require('./wsl.cjs');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -123,6 +124,9 @@ async function freePort() {
 async function start() {
   if(process.platform==='win32'&&app.isPackaged&&typeof app.setToastActivatorCLSID==='function'){
     try{const shortcut=shell.readShortcutLink(path.join(app.getPath('appData'),'Microsoft/Windows/Start Menu/Programs/Tidewatch.lnk'));if(shortcut.toastActivatorClsid)app.setToastActivatorCLSID(shortcut.toastActivatorClsid)}catch{}
+    for(const shortcutPath of [path.join(app.getPath('desktop'),'Tidewatch.lnk'),path.join(app.getPath('appData'),'Microsoft/Windows/Start Menu/Programs/Tidewatch.lnk')]){
+      try{const shortcut=shell.readShortcutLink(shortcutPath);if(path.resolve(shortcut.target).toLowerCase()===path.resolve(process.execPath).toLowerCase())shell.writeShortcutLink(shortcutPath,'update',{icon:path.join(source,'assets/tidewatch.ico'),iconIndex:0,appUserModelId:'io.github.wonby1n.tidewatch'})}catch{}
+    }
   }
   fs.mkdirSync(root, { recursive: true });
   if(smoke){
@@ -137,6 +141,8 @@ async function start() {
     onClick:id=>{if(id==='notification-test')show(false);else void openSession(id).catch(showError)},
   });
   let lastTestAt=0;
+  let wslConnecting=false;
+  ipcMain.handle('tidewatch:connect-wsl',async event=>{checkSender(event);if(smoke)return {testOnly:true};if(wslConnecting)throw new Error('WSL 연결 중입니다.');wslConnecting=true;try{const result=await connectWSL({root,source,dialog});if(!result.canceled){const build=spawn(process.execPath,[path.join(root,'tidewatch.mjs'),'build'],{env:{...process.env,ELECTRON_RUN_AS_NODE:'1',TIDEWATCH_DIR:root},windowsHide:true,stdio:'ignore'});build.unref()}return result}finally{wslConnecting=false}});
   ipcMain.handle('tidewatch:test-notification',async event=>{checkSender(event);if(smoke)return {outcome:'test-only'};if(Date.now()-lastTestAt<3000)throw new Error('잠시 후 다시 테스트하세요.');lastTestAt=Date.now();return sendTestNotification();});
   projectService = createProjects({ root, gh: path.join(__dirname,'..','vendor','github-cli','bin','gh.exe'), dialog,
     openExternal: url => smoke ? Promise.resolve() : shell.openExternal(url),

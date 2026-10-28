@@ -1,4 +1,5 @@
 const path = require('node:path');
+const {pathToFileURL}=require('node:url');
 function xml(value) { return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
 function createNotifier({ Notification, platform = process.platform, source, protocolReady = () => false, record = () => {}, onClick = () => {}, now = Date.now }) {
   const active = new Set();
@@ -12,7 +13,7 @@ function createNotifier({ Notification, platform = process.platform, source, pro
         const finish = (outcome, error) => { if(finished)return;finished=true;clearTimeout(timer);resolve(update(outcome,error)); };
         const labels = { waiting: '응답 필요', blocked: '작업 막힘', done: '작업 완료' };
         const options = { title: event.test ? 'Tidewatch 알림 테스트' : labels[event.status]+' · '+event.title, body: event.body, icon: path.join(source,'assets/tidewatch.png'), silent:false };
-        if(platform==='win32'&&protocolReady())options.toastXml='<toast activationType="protocol" launch="tidewatch://session/'+encodeURIComponent(event.sessionId)+'"><visual><binding template="ToastGeneric"><text>'+xml(options.title)+'</text><text>'+xml(event.body)+'</text></binding></visual></toast>';
+        if(platform==='win32'&&protocolReady())options.toastXml='<toast activationType="protocol" launch="tidewatch://session/'+encodeURIComponent(event.sessionId)+'"><visual><binding template="ToastGeneric"><image placement="appLogoOverride" hint-crop="circle" src="'+xml(pathToFileURL(path.resolve(source,'assets/tidewatch.png')).href)+'"/><text>'+xml(options.title)+'</text><text>'+xml(event.body)+'</text></binding></visual></toast>';
         try {
           const notification = new Notification(options); active.add(notification);update('requested');
           notification.on('show',()=>finish('delivered'));

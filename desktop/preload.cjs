@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('tidewatch', Object.freeze({
+  connectWSL: () => ipcRenderer.invoke('tidewatch:connect-wsl'),
   testNotification: () => ipcRenderer.invoke('tidewatch:test-notification'),
   projects: (action, payload) => ipcRenderer.invoke('tidewatch:projects', action, payload),
   launchTerminal: () => ipcRenderer.invoke('tidewatch:terminal'),

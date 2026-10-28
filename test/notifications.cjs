@@ -12,6 +12,7 @@ const notifier=createNotifier({Notification:FakeNotification,platform:'win32',so
  const event={sessionId:'safe-id',status:'done',title:'<task>',body:'A & B'};
  let r=await notifier.send(event);assert.equal(r.outcome,'delivered');assert.equal(history[0].outcome,'requested');
  assert.ok(latest.options.toastXml.includes('&lt;task&gt;'));assert.ok(latest.options.toastXml.includes('A &amp; B'));
+ assert.ok(latest.options.toastXml.includes('placement="appLogoOverride"'));assert.ok(latest.options.toastXml.includes('tidewatch.png'));
  latest.emit('click');assert.equal(clicked,'safe-id');
  result='failed';r=await notifier.send(event);assert.equal(r.outcome,'failed');assert.equal(r.error,'Windows rejected');
  result='throw';r=await notifier.send(event);assert.equal(r.outcome,'failed');assert.equal(r.error,'native failed');

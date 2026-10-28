@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v11 — https://github.com/wonby1n/tidewatch
+// Tidewatch v12 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -641,6 +641,7 @@ dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-r
     <span class="bell" id="bell"></span>
     <button class="btn" id="clear">끝난 카드 정리</button>
     <button class="btn" id="terminalBtn" hidden>다른 폴더에서 열기</button>
+    <button class="btn" id="wslConnect" hidden>WSL Claude 연결</button><p class="usage-note" id="wslMessage" role="status"></p>
     <div class="panel" id="panel" hidden>
       <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
       <button class="tg" id="notifyBtn" type="button"><i></i><span></span></button>
@@ -931,6 +932,7 @@ $('projectList').addEventListener('click',async e=>{const b=e.target.closest('bu
   if(b.dataset.projectRemove){projectState=await window.tidewatch.projects('remove',{repository:b.dataset.projectRemove});paintProjects();actionMessage('프로젝트 등록을 해제했습니다. 실제 폴더는 유지됩니다.')}
 }catch(e){actionMessage(e.message)}finally{b.disabled=false}});
 if(API){
+  if(window.tidewatch?.connectWSL){$('wslConnect').hidden=false;$('wslConnect').onclick=async()=>{const b=$('wslConnect');b.disabled=true;try{const r=await window.tidewatch.connectWSL();if(!r.canceled){$('wslMessage').textContent=r.distro+' 연결 완료 · 기존 Claude는 /hooks에서 새 설정을 확인하거나 다음에 대화를 재개할 때 적용됩니다. 응답 완료는 작업 전체 완료와 별개입니다.';actionMessage('WSL Claude 연결 완료 · 실행 중인 세션 '+r.detected+'개 감지');refreshBoard()}}catch(e){$('wslMessage').textContent=e.message}finally{b.disabled=false}}}
   if(window.tidewatch?.testNotification){$('notificationTest').hidden=false;$('notificationTest').onclick=async()=>{const b=$('notificationTest');b.disabled=true;try{const r=await window.tidewatch.testNotification();await refreshStatus();paintNotificationStatus();actionMessage(r.outcome==='delivered'?'Windows에 테스트 알림을 전달했습니다. 화면에 안 보이면 알림 센터와 Windows의 알림·방해 금지 설정을 확인하세요.':r.outcome==='failed'?'알림 전달에 실패했습니다. 설정의 전달 상태를 확인하세요.':'알림 전달 결과를 확인하지 못했습니다.')}catch(e){actionMessage(e.message)}finally{b.disabled=false}};setInterval(paintNotificationStatus,5000);paintNotificationStatus()}
   if(window.tidewatch?.projects){$('projects').hidden=false;$('projectsBtn').hidden=false;$('projectsBtn').onclick=showProjects;$('projectAdd').onclick=showProjects;window.tidewatch.projects('state').then(s=>{projectState=s;paintProjects()}).catch(e=>actionMessage(e.message))}
   if(window.tidewatch?.launchTerminal){$('terminalBtn').hidden=false;$('terminalBtn').onclick=async()=>{const b=$('terminalBtn');b.disabled=true;try{const r=await window.tidewatch.launchTerminal();if(!r.canceled)actionMessage('선택한 프로젝트에서 터미널을 열었습니다. 이어할 대화는 터미널 목록에서 선택하세요.')}catch(e){actionMessage(e.message)}finally{b.disabled=false}}}

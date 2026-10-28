@@ -19,6 +19,8 @@ Each card fills with water as the work moves forward.
 
 ## Desktop app (Windows)
 
+**WSL Claude Code:** use **설정 → WSL Claude 연결** to connect a running WSL distribution. Existing Claude settings are preserved; lifecycle hooks report tool activity, permission waits and response completion to the Windows board. [Setup and limitations](docs/wsl.md)
+
 **GitHub projects:** use **＋ GitHub에서 추가** to connect your GitHub account, select a repository, and either clone it or link its existing local folder once. Saved projects have **새 작업** (New) and **이어하기** (Resume) buttons with a Claude/Codex selector; no repeated folder picker. Official GitHub CLI authentication and its permissions are explained in [GitHub projects](docs/github-projects.md).
 
 **Start or resume terminal work:** choose **터미널 작업**, an agent, and a project folder. Tidewatch opens Claude Code or Codex in that folder and remembers the last folder. Resume opens the CLI conversation picker; it does not yet bind a card to an exact terminal conversation. Keep active conversations in their existing terminal. The corresponding CLI must already be installed.
