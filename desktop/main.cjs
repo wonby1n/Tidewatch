@@ -11,7 +11,7 @@ const os = require('node:os');
 const net = require('node:net');
 
 // Register the installed app identity before Windows initializes notifications.
-app.setAppUserModelId('io.github.wonby1n.tidewatch');
+app.setAppUserModelId(app.isPackaged?'io.github.wonby1n.tidewatch':'io.github.wonby1n.tidewatch.development');
 
 const smoke = process.argv.includes('--smoke-test');
 let root = process.env.TIDEWATCH_DIR || path.join(os.homedir(), '.tidewatch');
