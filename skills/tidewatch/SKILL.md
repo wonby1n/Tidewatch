@@ -1,6 +1,6 @@
 ---
 name: tidewatch
-description: Tidewatch — 여러 Claude Code·Codex 세션의 진행 상황을 물이 차오르는 브라우저 현황판에 띄운다. 여러 단계 작업을 시작할 때, 또는 사용자가 Tidewatch·타이드워치·현황판·진행 상황 보드를 말할 때 쓴다.
+description: Tidewatch — a live board for many Claude Code and Codex sessions; each session keeps a card with its current step, roadmap, errors and what it needs from you. Use when starting multi-step work, or when the user mentions Tidewatch, a progress board, 타이드워치 or 현황판.
 ---
 
 # Tidewatch 🌊

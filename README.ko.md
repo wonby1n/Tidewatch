@@ -91,6 +91,12 @@ irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
 ```
 
+**skills CLI로** (스킬만, 바탕화면 앱·펫 없이):
+
+```sh
+npx skills add wonby1n/Tidewatch
+```
+
 **직접 설치**: [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip)을 받아서 `tidewatch` 폴더를 아래 위치에 풀고, `tidewatch/scripts/tidewatch.mjs`를 `~/.tidewatch/tidewatch.mjs`로 복사하면 돼요.
 
 | 에이전트 | 스킬 폴더 |

@@ -105,6 +105,12 @@ irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
 curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
 ```
 
+**With the skills CLI** (skill only, no desktop app or pet):
+
+```sh
+npx skills add wonby1n/Tidewatch
+```
+
 **Manual**: download [`tidewatch-skill.zip`](https://github.com/wonby1n/tidewatch/raw/main/dist/tidewatch-skill.zip), unzip the `tidewatch` folder into the skill folder below, and copy `tidewatch/scripts/tidewatch.mjs` to `~/.tidewatch/tidewatch.mjs`.
 
 | Agent | Skill folder |
