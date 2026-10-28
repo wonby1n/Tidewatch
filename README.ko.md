@@ -137,9 +137,9 @@ writable_roots = ["C:\\Users\\me\\.tidewatch"]   # macOS·Linux: "/Users/me/.tid
 
 ## 메모장 모드
 
-큰 창이 부담스러우면 포스트잇 크기의 작은 창으로 볼 수 있어요. 세션마다 상태 배지, 대주제, "지금" 한 줄(내 차례면 "네가 할 일"), 얇은 진행 막대만 보여요.
+큰 창이 부담스러우면 포스트잇 크기의 작은 창으로 볼 수 있어요. 세션마다 진한 상태 배지, 내가 할 일 또는 막힌 이유, 완료 단계 수와 진행률을 보여요. 막힌 작업에는 오류 위치와 막힌 단계를, 끝난 작업에는 완료 결과를 표시해요.
 
-<p align="center"><img src="docs/mini.png" alt="메모장 모드: 라이트와 다크" width="640"></p>
+<p align="center"><img src="docs/mini.png" alt="메모장 모드: 상태 배지, 완료 단계 수, 막힌 이유와 위치" width="640"></p>
 
 - 앱 위쪽 **메모로 보기**, 펫 클릭, 또는 `node ~/.tidewatch/tidewatch.mjs mini`
 - 줄을 누르거나 **크게 보기**를 누르면 큰 현황판이 열려요

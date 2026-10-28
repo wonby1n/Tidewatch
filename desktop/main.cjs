@@ -144,6 +144,32 @@ async function start() {
     if (!mini) throw new Error('Mini button did not open an app window');
     if (mini.webContents.isLoading()) await new Promise(resolve => mini.webContents.once('did-finish-load', resolve));
     if (!(await mini.webContents.executeJavaScript(`document.documentElement.dataset.mode==='mini'`))) throw new Error('Mini view failed');
+    const memoCheck = await mini.webContents.executeJavaScript(`(()=>{
+      const original=last;const now=Date.now();
+      try {
+        render({sessions:[
+          {id:'wait',title:'Waiting task',status:'waiting',needsYou:'선택해주세요',mtime:now,steps:[]},
+          {id:'error',title:'Blocked task',status:'blocked',mtime:now,error:{where:'restore.js:12',message:'파일 없음'},steps:[{text:'복원',state:'error'}]},
+          {id:'work',title:'Working task',status:'working',mtime:now,steps:[{text:'준비',state:'done'},{text:'검사',state:'doing'}]},
+          {id:'done',title:'Finished task',status:'done',now:'검사 통과',mtime:now,steps:[{text:'검사',state:'done'}]}
+        ]});
+        const row=s=>document.querySelector('.m-row.'+s).textContent;
+        return {waiting:row('waiting').includes('너 차례')&&row('waiting').includes('선택해주세요')&&row('waiting').includes('진행률 미확인'),
+          blocked:row('blocked').includes('막힘')&&row('blocked').includes('막힌 단계 · 복원')&&row('blocked').includes('파일 없음')&&row('blocked').includes('restore.js:12'),
+          working:row('working').includes('50%')&&row('working').includes('1 / 2 단계 완료'),
+          done:row('done').includes('완료')&&row('done').includes('100%')&&row('done').includes('검사 통과'),
+          overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth};
+      } finally {render(original)}
+    })()`);
+    if (!memoCheck.waiting || !memoCheck.blocked || !memoCheck.working || !memoCheck.done || memoCheck.overflow) throw new Error('Memo check failed: '+JSON.stringify(memoCheck));
+    if (process.env.TIDEWATCH_SCREENSHOT_DIR) {
+      mini.showInactive();
+      for (const theme of ['light','dark']) {
+        await mini.webContents.executeJavaScript(`document.documentElement.dataset.theme=${JSON.stringify(theme)};new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
+        const shot = await mini.webContents.capturePage();
+        fs.writeFileSync(path.join(process.env.TIDEWATCH_SCREENSHOT_DIR,'memo-'+theme+'.png'),shot.toPNG());
+      }
+    }
     if (allowed('https://example.com/') || allowed(origin + '/api/status')) throw new Error('Navigation guard failed');
     console.log('DESKTOP_SMOKE_OK ' + JSON.stringify(result));
     app.quit();

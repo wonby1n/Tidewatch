@@ -152,9 +152,9 @@ When you run many agent sessions side by side, coming back to one usually means 
 
 ## Sticky-note view
 
-If the full board feels like too much, open a small sticky-note window. Each session gets one row: status, theme, one "now" line (or "your turn" note), and a thin progress bar.
+If the full board feels like too much, open a small sticky-note window. Each session shows a high-contrast status badge, what it needs from you or where it is blocked, completed steps and a percentage. Blocked tasks include the error location and failing step; completed tasks show their result.
 
-<p align="center"><img src="docs/mini.png" alt="Sticky-note view in light and dark" width="640"></p>
+<p align="center"><img src="docs/mini.png" alt="Memo view: clear status, numeric progress and blocked steps" width="640"></p>
 
 - **메모로 보기** in the app, click the pet, or `node ~/.tidewatch/tidewatch.mjs mini`
 - Click a row or **크게 보기** to open the full board

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v6 — https://github.com/wonby1n/tidewatch
+// Tidewatch v7 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -585,6 +585,13 @@ header{align-items:center;flex-wrap:nowrap;padding:24px 24px 20px;gap:16px}
 .water{background:linear-gradient(to bottom,color-mix(in srgb,var(--c) 5%,transparent),color-mix(in srgb,var(--c) 14%,transparent))}.wave path{fill:color-mix(in srgb,var(--c) 7%,transparent)}.wave{height:10px}.bot{width:37px;height:37px;right:13px}.bubble{right:29px;bottom:32px;min-width:18px;height:18px;line-height:18px;font-size:10px;padding:0 5px}.x{font-size:12px;width:20px;height:20px;line-height:20px}
 .m-top b{letter-spacing:-.04em;font-size:15px}.m-row{border-radius:11px;padding-top:12px;padding-bottom:12px}.m-row:before{width:2px}.m-badge{font-weight:600;background:color-mix(in srgb,var(--c) 12%,var(--card));color:var(--c)}
 @media(max-width:520px){header{padding:20px 16px 18px}.usage{padding:0 16px 18px}.usage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.usage-head{align-items:flex-start;flex-direction:column;gap:1px}.usage-model{font-size:11px}.usage-card>summary{padding:10px}.usage-preview{font-size:9px}.usage-meter{max-width:35px}.grid{grid-template-columns:1fr}.group,.sum{padding-left:16px;padding-right:16px}}
+/* Memo mode prioritizes the state, the next action, and explicit progress. */
+#mini{padding:14px 12px 20px}.m-top{margin-bottom:10px}.m-top b{flex:1}.m-stats{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px;font-size:10px;color:var(--sub)}.m-stats span{display:flex;align-items:center;gap:4px}.m-stats i{width:5px;height:5px;border-radius:50%;background:var(--c)}.m-stats b{font-weight:750;color:var(--ink)}
+.m-row{padding:11px 12px 12px 15px;margin-bottom:9px;border-radius:12px;outline:none}.m-row:before{width:3px}.m-row:focus-visible{outline:2px solid #4b8db7;outline-offset:2px}.m-row.waiting{border-color:color-mix(in srgb,#bd6c36 48%,var(--line))}.m-row.blocked{border-color:color-mix(in srgb,#c74f55 48%,var(--line))}
+.m-h{justify-content:space-between;gap:7px}.m-badge{font-size:11px;line-height:1.4;font-weight:750;padding:3px 8px;border-radius:6px;color:#fff;background:#235f9e}.m-row.waiting .m-badge{background:#96511e}.m-row.blocked .m-badge{background:#b43d47}.m-row.done .m-badge{background:#24724a}
+.m-origin{font-size:10px;color:var(--sub);flex:1}.m-title{margin-top:8px;font-size:14px;font-weight:750;line-height:1.45;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m-ago{font-size:10px}
+.m-callout{margin-top:8px;border-radius:7px;background:var(--chip);padding:7px 9px;font-size:12px;line-height:1.55;overflow-wrap:anywhere}.m-callout strong{display:block;font-size:9px;margin-bottom:2px;color:var(--sub);font-weight:650}.m-callout p{margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m-row.waiting .m-callout{background:var(--youbg)}.m-row.waiting .m-callout strong{color:var(--youtx)}.m-row.blocked .m-callout{background:var(--errbg)}.m-row.blocked .m-callout strong{color:var(--errtx)}
+.m-location{margin-top:5px;color:var(--sub);font:10px/1.5 ui-monospace,Consolas,monospace;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m-progress{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:10px;color:var(--sub)}.m-progress b{font-weight:750;color:var(--ink)}.m-progress em{font-style:normal;font-weight:700;color:var(--c)}.m-row .track.m{margin-top:5px;gap:3px}.m-row .track.m i{height:6px}.m-step{margin-top:5px;font-size:10px;line-height:1.5;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m-row.blocked .m-step{color:var(--errtx);font-weight:650}.m-stale{font-size:10px;color:var(--sub);margin-top:5px}
 </style></head><body>
 <header>
   <div class="brand">
@@ -742,16 +749,30 @@ if(MINI)document.documentElement.dataset.mode='mini';
 const bigUrl=()=>location.href.split('?')[0];
 function renderMini(ss){
   const n=k=>ss.filter(s=>s.st===k).length;
-  const pills=Object.entries(ST).filter(([k])=>n(k)).map(([k,v])=>'<span title="'+v[0]+'"><i style="--c:'+v[1]+'"></i>'+n(k)+'</span>').join('');
+  const names={waiting:'너 차례',blocked:'막힘',working:'진행 중',done:'완료'};
+  const pills=Object.entries(ST).map(([k,v])=>'<span><i style="--c:'+v[1]+'"></i>'+names[k]+' <b>'+n(k)+'</b></span>').join('');
   const rows=ss.map(s=>{
     const color=ST[s.st][1];const steps=(Array.isArray(s.steps)?s.steps:[]).filter(x=>x&&typeof x.text==='string');
-    const line=s.needsYou?'<div class="m-you">'+esc(s.needsYou)+'</div>':s.now?'<div class="m-now">'+esc(s.now)+'</div>':'';
-    return '<div class="m-row '+s.st+'" style="--c:'+color+'" title="'+esc((s.task?s.task+' — ':'')+(s.now||''))+'"><div class="m-h"><span class="m-badge">'+ST[s.st][0]+'</span><b>'+esc(s.title||s.id)+'</b><span class="m-ago">'+ago(s.mtime)+'</span></div>'+line
-      +(steps.length?'<div class="track m">'+steps.map(x=>'<i class="'+esc(x.state||'todo')+'"></i>').join('')+'</div>':'')+'</div>';
+    const finished=steps.filter(x=>x.state==='done'||x.state==='skipped').length;
+    const percent=s.st==='done'?100:steps.length?Math.round(finished/steps.length*100):null;
+    const current=steps.find(x=>x.state==='error')||steps.find(x=>x.state==='doing');
+    const next=steps.find(x=>x.state==='todo');
+    const heading=s.st==='waiting'?'내가 할 일':s.st==='blocked'?'막힌 이유':s.st==='done'?'완료 결과':'지금 하는 일';
+    const message=s.st==='waiting'?(s.needsYou||s.now||'확인이나 답변이 필요합니다'):s.st==='blocked'?(s.error?.message||current?.detail||s.now||'오류 내용을 확인하세요'):(s.now||s.task||'');
+    const line=message?'<div class="m-callout"><strong>'+heading+'</strong><p>'+esc(String(message).split(String.fromCharCode(10))[0])+'</p></div>':'';
+    const step=s.st==='blocked'&&current?'막힌 단계 · '+current.text:current?'현재 단계 · '+current.text:next?'다음 단계 · '+next.text:'';
+    const icon={waiting:'? ',blocked:'! ',working:'● ',done:'✓ '}[s.st];
+    return '<article class="m-row '+s.st+'" role="button" tabindex="0" style="--c:'+color+'" title="'+esc((s.task?s.task+' — ':'')+(s.now||''))+'"><div class="m-h"><span class="m-badge">'+icon+names[s.st]+'</span><span class="m-origin">'+esc(AGENT[s.agent]||s.agent||'')+'</span><span class="m-ago">'+ago(s.mtime)+'</span></div><div class="m-title">'+esc(s.title||s.id)+'</div>'+line
+      +(s.st==='blocked'&&s.error?.where?'<div class="m-location">'+esc(s.error.where)+'</div>':'')
+      +'<div class="m-progress"><b>'+(steps.length?finished+' / '+steps.length+' 단계 완료':s.st==='done'?'작업 완료':'단계 정보 없음')+'</b><em>'+(percent===null?'진행률 미확인':percent+'%')+'</em></div>'
+      +(steps.length?'<div class="track m" role="progressbar" aria-label="완료한 단계 비율" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+percent+'">'+steps.map(x=>'<i class="'+esc(x.state||'todo')+'"></i>').join('')+'</div>':'')
+      +(step?'<div class="m-step">'+esc(step)+'</div>':'')
+      +(s.st==='working'&&Date.now()-s.mtime>30*60000?'<div class="m-stale">30분 이상 갱신되지 않은 상태입니다</div>':'')+'</article>';
   }).join('');
-  $('mini').innerHTML='<div class="m-top"><b>TIDEWATCH</b><span class="m-pills">'+pills+'</span><button type="button" id="bigBtn">크게 보기</button></div>'+(rows||'<div class="m-empty">진행 중인 세션이 없어요 🌊</div>');
+  $('mini').innerHTML='<div class="m-top"><b>Tidewatch</b><button type="button" id="bigBtn">크게 보기</button></div><div class="m-stats">'+pills+'</div>'+(rows||'<div class="m-empty">진행 중인 세션이 없어요 🌊</div>');
 }
 $('mini').addEventListener('click',e=>{if(e.target.closest('#bigBtn')||e.target.closest('.m-row'))window.open(bigUrl(),'tidewatch-big')});
+$('mini').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('.m-row')){e.preventDefault();e.target.click()}});
 $('miniBtn').addEventListener('click',()=>window.open(bigUrl()+'?mini=1','tidewatch-mini','popup,width=360,height=520'));
 function paintPanel(){
   if(!status)return;

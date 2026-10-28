@@ -40,7 +40,7 @@ fs.utimesSync(path.join(sessions, 'es-crawl.json'), old, old);
 check('build writes the page and the live data file', () => {
   const page = run('build');
   assert.ok(fs.existsSync(page));
-  assert.ok(fs.readFileSync(page, 'utf8').includes('TIDEWATCH'));
+  assert.match(fs.readFileSync(page, 'utf8'), /<title>Tidewatch<\/title>/);
   assert.equal(data().sessions.length, 4);
 });
 
