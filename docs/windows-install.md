@@ -4,7 +4,7 @@
 
 1. [공식 GitHub 릴리스](https://github.com/wonby1n/Tidewatch/releases/latest)에서 **Tidewatch-Setup.exe**를 받습니다. `tidewatch-skill.zip`은 스킬 수동 설치용이며 앱 설치 파일이 아닙니다.
 2. 설치 파일을 실행하고 안내에 따라 설치합니다. 현재 사용자 계정용 설치이며 바탕화면과 시작 메뉴에 Tidewatch 바로가기를 만듭니다.
-3. Tidewatch를 엽니다. 앱에서 Claude Code 또는 Codex의 **연결하기**를 누르면 해당 에이전트의 스킬을 설치할 수 있습니다.
+3. Tidewatch를 엽니다. 앱 오른쪽 위 **설정**에서 Claude Code 또는 Codex의 **연결하기**를 누르면 해당 에이전트의 스킬을 설치할 수 있습니다.
 4. 새 코딩 세션에서 구체적인 작업과 함께 Claude Code는 `/tidewatch`, Codex는 `$tidewatch` 사용을 요청합니다. 이미 열어둔 세션에서 스킬이 보이지 않으면 세션을 새로 시작하세요.
 
 ## 설치 전에 알아두세요

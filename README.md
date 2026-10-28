@@ -11,7 +11,7 @@ Each card fills with water as the work moves forward.
 
 [English](README.md) · [한국어](README.ko.md)
 
-<img src="docs/demo.gif" alt="Tidewatch demo: a blocked card gets fixed, the water rises and the card flips to 'your turn'" width="880">
+<img src="docs/app.png" alt="Tidewatch: compact usage summaries and task cards with sample data" width="880">
 
 </div>
 

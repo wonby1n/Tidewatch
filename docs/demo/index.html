@@ -179,34 +179,65 @@ html[data-mode="mini"] .usage{display:none}
 .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--sub)}
 .card.sleep .ago{color:#b07a00;font-weight:800}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Quiet surfaces, compact telemetry, and a clear task-first hierarchy. */
+:root{--bg:#f6f7f9;--ink:#202632;--sub:#737c8a;--line:#e4e7ed;--chip:#f1f3f6;--youbg:#fff6ed;--errbg:#fff1f0}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#14171d;--card:#1c2028;--ink:#e8ebf1;--sub:#969ead;--line:#303640;--chip:#262c35;--youbg:#342820;--errbg:#352426}}
+:root[data-theme=dark]{--bg:#14171d;--card:#1c2028;--ink:#e8ebf1;--sub:#969ead;--line:#303640;--chip:#262c35;--youbg:#342820;--errbg:#352426}
+body{font-size:14px;line-height:1.55;letter-spacing:-.02em}button,summary{-webkit-tap-highlight-color:transparent}
+button:focus-visible,summary:focus-visible{outline:2px solid #4b8db7;outline-offset:3px}
+header{align-items:center;flex-wrap:nowrap;padding:24px 24px 20px;gap:16px}
+.brand{gap:9px}.brand svg{width:30px;height:30px}h1{font-size:22px;font-weight:750;letter-spacing:-.055em}.tag{font-size:11px;margin-top:1px}
+.ctrl{gap:6px;flex-wrap:nowrap}.meta{display:none}.btn{border-color:var(--line);font-weight:600;font-size:11px;border-radius:8px;padding:6px 9px;white-space:nowrap}
+.settings{position:relative;z-index:20}.settings>summary{list-style:none;cursor:pointer;user-select:none}.settings>summary::-webkit-details-marker{display:none}
+.settings-menu{position:absolute;right:0;top:calc(100% + 8px);width:270px;max-width:calc(100vw - 32px);padding:14px;display:flex;gap:12px;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 45px #00000015}
+.settings-menu>label{font-size:11px;color:var(--sub);display:flex;align-items:center;justify-content:space-between;gap:10px}.settings-menu .panel{padding:0;gap:7px}.settings-menu .conn{border-radius:8px;width:100%;font-size:11px;padding:5px 8px}.settings-menu .conn small{font-size:10px}
+.settings-menu .tg{font-size:11px;padding:5px 8px;border-radius:8px}.settings-menu .seg button{font-size:11px;padding:4px 7px}.settings-menu #clear{width:100%;text-align:center}
+.usage{padding:0 24px 20px}.usage-top{margin-bottom:8px}.usage-top h2{font-size:10px;font-weight:650;letter-spacing:.04em}.usage-top .btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 9px;font-size:11px;border-radius:8px}.usage-top .btn:hover{border-color:#91adbe;background:var(--chip)}.usage-top .btn:disabled{opacity:.65;cursor:wait}.usage-top .refreshing .refresh-icon{display:inline-block;animation:refresh-spin 1s linear infinite}@keyframes refresh-spin{to{transform:rotate(360deg)}}
+.usage-grid{gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}.usage-card{padding:0;border-radius:12px;overflow:hidden;box-shadow:0 2px 3px #00000002}.usage-card.limited{border-color:color-mix(in srgb,#dd7957 40%,var(--line))}
+.usage-card>summary{padding:11px 12px;list-style:none;cursor:pointer}.usage-card>summary::-webkit-details-marker{display:none}.usage-head{font-size:11px;gap:4px}.usage-head b{font-weight:700}.usage-state{font-size:9px;white-space:nowrap}.usage-card.limited .usage-state{color:#c46d4c;font-weight:600}
+.usage-model{font-size:12px;font-weight:650;margin:4px 0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usage-preview{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px;color:var(--sub)}.usage-preview b{font-weight:600;color:var(--ink)}.usage-chevron{font-size:10px;opacity:.65}.usage-card[open] .usage-chevron{transform:rotate(180deg)}
+.usage-meter{height:3px;border-radius:9px;background:var(--chip);overflow:hidden;flex:1;max-width:60px}.usage-meter i{display:block;height:100%;border-radius:inherit;background:#6496b0}.usage-card.limited .usage-meter i{background:#ca8a6f}
+.usage-detail{padding:0 12px 12px;border-top:1px solid var(--line)}.usage-detail>small:first-child{margin-top:9px}.usage-card small{font-size:10px}.usage-window{font-size:11px}.usage-actions button{font-size:10px;padding:4px 7px}.usage-note{font-size:10px;line-height:1.55;color:var(--sub)}.usage-note:empty{display:none}.usage-disclaimer{display:none}.usage:has(.usage-card[open]) .usage-disclaimer{display:block}
+.sum{gap:14px;padding-bottom:18px;align-items:center}.pill{background:none;border:0;padding:0;font-size:11px;font-weight:550;gap:5px}.pill i{width:6px;height:6px}.sum .hint{display:none}
+.group h2{font-size:12px;font-weight:650;margin:0 0 10px}.group h2 small{font-size:10px;font-weight:450}.grid{gap:12px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+.card{border-radius:15px;min-height:200px;box-shadow:0 2px 5px #18203503}.card.waiting,.card.blocked{box-shadow:0 2px 6px #18203505;border-color:color-mix(in srgb,var(--c) 45%,var(--line))}
+.content{padding:16px 17px}.content>:not(.top){margin-right:44px}.title{font-size:16px;font-weight:700;letter-spacing:-.035em;margin-top:7px}.agent{font-size:9px;font-weight:650;padding:2px 6px;border-radius:4px;color:var(--sub)}
+.badge{font-size:10px;font-weight:650;padding:3px 8px;background:color-mix(in srgb,var(--c) 12%,var(--card));color:color-mix(in srgb,var(--c) 82%,var(--ink))}.task{font-size:11px;margin-top:4px;font-weight:400}.task b{font-weight:500}
+.now{border:0;border-radius:9px;padding:10px 11px;background:color-mix(in srgb,var(--c) 5%,var(--card));margin-top:14px}.now .lbl{font-size:9px;letter-spacing:0;font-weight:600}.now .dot{width:5px;height:5px;animation:none}.now p{font-size:14px;font-weight:650;line-height:1.6;margin-top:4px}
+.you,.err{border-left-width:2px;padding:10px 11px;font-size:12px;font-weight:550;border-radius:8px}.lbl{font-size:9px;font-weight:600;letter-spacing:0}.err code,.err pre{font-size:10px}.track{gap:3px;margin-top:15px}.track i{height:4px}.track-txt{font-size:10px;font-weight:450}.road{margin-top:14px}.road li{font-size:12px;padding-left:23px;padding-bottom:10px}.road .n{width:16px;height:16px;top:2px;font-size:9px}.road li:not(:last-child):after{left:7px;top:18px}.road .tx,.road li.doing .tx,.road li.error .tx{font-weight:550}.road small{font-size:10px;line-height:1.55}.here{font-size:8px;font-weight:550;padding:1px 5px}.road .t,.foot{font-size:10px}.foot{opacity:.8}
+.water{background:linear-gradient(to bottom,color-mix(in srgb,var(--c) 5%,transparent),color-mix(in srgb,var(--c) 14%,transparent))}.wave path{fill:color-mix(in srgb,var(--c) 7%,transparent)}.wave{height:10px}.bot{width:37px;height:37px;right:13px}.bubble{right:29px;bottom:32px;min-width:18px;height:18px;line-height:18px;font-size:10px;padding:0 5px}.x{font-size:12px;width:20px;height:20px;line-height:20px}
+.m-top b{letter-spacing:-.04em;font-size:15px}.m-row{border-radius:11px;padding-top:12px;padding-bottom:12px}.m-row:before{width:2px}.m-badge{font-weight:600;background:color-mix(in srgb,var(--c) 12%,var(--card));color:var(--c)}
+@media(max-width:520px){header{padding:20px 16px 18px}.usage{padding:0 16px 18px}.usage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.usage-head{align-items:flex-start;flex-direction:column;gap:1px}.usage-model{font-size:11px}.usage-card>summary{padding:10px}.usage-preview{font-size:9px}.usage-meter{max-width:35px}.grid{grid-template-columns:1fr}.group,.sum{padding-left:16px;padding-right:16px}}
 </style></head><body><aside style="padding:12px 20px;background:#fff3d6;color:#302513;font:14px/1.6 system-ui">예제 화면 · Sample data, not live sessions. 앱 설치·연결·알림·펫 기능은 이 미리보기에서 사용할 수 없습니다. <a href="https://github.com/wonby1n/Tidewatch#quick-start">Install Tidewatch</a></aside>
 <header>
   <div class="brand">
     <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#3b82f6" opacity=".15"/><path d="M6 28q4.5-5 9 0t9 0 9 0 9 0v8a14 14 0 0 1-36 0z" fill="#3b82f6"/><circle cx="24" cy="24" r="21" fill="none" stroke="#3b82f6" stroke-width="2.5"/></svg>
-    <div><h1>TIDEWATCH</h1><p class="tag">물이 차오를수록 끝이 가까워요</p></div>
+    <div><h1>Tidewatch</h1><p class="tag">AI 작업을 한눈에</p></div>
   </div>
   <div class="ctrl">
-    <div class="seg" id="size" role="group" aria-label="크기"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button></div>
+    <button class="btn" id="miniBtn" title="작은 메모 창으로 보기">메모로 보기</button>
+    <details class="settings"><summary class="btn">설정</summary><div class="settings-menu">
+    <label>카드 크기<div class="seg" id="size" role="group" aria-label="크기"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button></div></label>
     <div class="seg" id="theme" role="group" aria-label="테마"><button data-v="auto">자동</button><button data-v="light">라이트</button><button data-v="dark">다크</button></div>
     <span class="bell" id="bell"></span>
-    <button class="btn" id="miniBtn" title="작은 메모 창으로 보기">메모로 보기</button>
     <button class="btn" id="clear">끝난 카드 정리</button>
+    <div class="panel" id="panel" hidden>
+      <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
+      <button class="tg" id="notifyBtn" type="button"><i></i><span></span></button>
+      <span class="conn" id="conn-claude"></span><span class="conn" id="conn-codex"></span>
+    </div>
+    </div></details>
     <span class="meta" id="meta"></span>
   </div>
 </header>
 <section class="usage" id="usage" hidden aria-label="AI 모델과 사용 한도">
-  <div class="usage-top"><h2>AI 사용 상태</h2><button class="btn" id="usageRefresh" type="button">한도 새로고침</button></div>
+  <div class="usage-top"><h2>AI 사용 상태</h2><button class="btn" id="usageRefresh" type="button" title="Codex 한도와 수신된 Claude 상태를 다시 확인" aria-label="모델과 사용량 새로고침"><span class="refresh-icon" aria-hidden="true">↻</span><span>새로고침</span></button></div>
   <div class="usage-grid" id="usageGrid"></div>
-  <p class="usage-note">구독 한도와 대화 토큰은 별개입니다. 모델·대화 토큰은 최근 세션 기준이며, 오래된 정보는 현재 상태와 다를 수 있습니다.</p>
+  <p class="usage-note usage-disclaimer">구독 한도와 대화 토큰은 별개입니다. 모델·대화 토큰은 최근 세션 기준이며, 오래된 정보는 현재 상태와 다를 수 있습니다.</p>
   <p class="usage-note" id="usageMessage" role="status"></p>
 </section>
 <div class="sum" id="sum"></div>
-<div class="panel" id="panel" hidden>
-  <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
-  <button class="tg" id="notifyBtn" type="button"><i></i><span></span></button>
-  <span class="conn" id="conn-claude"></span>
-  <span class="conn" id="conn-codex"></span>
-</div>
 <div class="hint2" id="hint" hidden>펫·알림·연결 관리는 바탕화면의 Tidewatch 아이콘으로 열면 쓸 수 있어요</div>
 <div id="board"></div>
 <div id="mini" hidden></div>
@@ -373,18 +404,21 @@ function paintUsage(){
     }).join('');
     const tokens=typeof u.inputTokens==='number'||typeof u.outputTokens==='number'?'<small>최근 대화 누적 토큰 · 입력 '+(typeof u.inputTokens==='number'?u.inputTokens.toLocaleString():'확인 불가')+' / 출력 '+(typeof u.outputTokens==='number'?u.outputTokens.toLocaleString():'확인 불가')+'</small>':'';
     const source=u.source==='codex-app-server'?'Codex 계정 조회':u.source==='claude-statusline'?'Claude 상태줄':u.source==='local-session'?'로컬 세션 기록':'미연결';
-    return '<article class="usage-card '+(limited?'limited':'')+'"><div class="usage-head"><b>'+name+'</b><span class="usage-state">'+state+'</span></div><div class="usage-model">최근 모델 · '+esc(u.model||'확인 불가')+'</div>'
+    const preview=active.length?(active[0].windowDurationMins===300?'5시간 · ':'')+Math.round(active[0].usedPercent)+'% 사용':'사용량 확인 불가';
+    const model=String(u.model||'모델 미확인').replace('claude-opus-5-5','Opus 5.5').replace('claude-sonnet-5-5','Sonnet 5.5');
+    return '<details data-usage-agent="'+agent+'" class="usage-card '+(limited?'limited':'')+'" '+(store.get('usage.open.'+agent,'0')==='1'?'open':'')+'><summary><div class="usage-head"><b>'+name+'</b><span class="usage-state">'+(u.manualLimited?'한도 소진 · 직접 표시':limited?'한도 소진':stale?'갱신 필요':'')+'</span></div><div class="usage-model" title="최근 모델 · '+esc(u.model||'확인 불가')+'">'+'<span style="font-size:9px;color:var(--sub);font-weight:450;margin-right:5px">최근</span>'+esc(model)+'</div><div class="usage-preview"><span>'+preview+'</span>'+(active.length?'<span class="usage-meter"><i style="width:'+Math.max(0,Math.min(100,active[0].usedPercent))+'%"></i></span>':'')+'<span class="usage-chevron">⌄</span></div></summary><div class="usage-detail"><small>'+state+'</small>'
       +(u.modelObservedAt?'<small>모델 기록 '+esc(ago(u.modelObservedAt))+'</small>':'')+bars+(!windows.length?'<small>구독 한도 수치 확인 불가</small>':'')+tokens
       +(typeof u.contextUsedPercent==='number'?'<small>최근 대화 컨텍스트 '+Math.round(u.contextUsedPercent)+'% 사용</small>':'')
       +'<small>'+source+(u.observedAt?' · '+esc(ago(u.observedAt)):'')+(stale?' · 오래되었거나 미수집':'')+'</small>'
       +'<div class="usage-actions">'+(agent==='claude'&&!u.hookConnected?'<button data-usage="connect" type="button">사용량 연결</button>':'')
-      +'<button data-usage="limited" data-agent="'+agent+'" data-limited="'+(!u.manualLimited)+'" type="button">'+(u.manualLimited?'직접 표시 해제':'한도 도달 직접 표시')+'</button></div></article>';
+      +'<button data-usage="limited" data-agent="'+agent+'" data-limited="'+(!u.manualLimited)+'" type="button">'+(u.manualLimited?'직접 표시 해제':'한도 도달 직접 표시')+'</button></div></div></details>';
   }).join('');
 }
 async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
 if(API){
+  $('usageGrid').addEventListener('toggle',e=>{if(e.target.matches('details[data-usage-agent]'))store.set('usage.open.'+e.target.dataset.usageAgent,e.target.open?'1':'0')},true);
   $('usage').hidden=false;
-  $('usageRefresh').addEventListener('click',async()=>{const b=$('usageRefresh');b.disabled=true;$('usageMessage').textContent='사용 한도 확인 중…';try{await api('/api/usage/refresh',{});await refreshStatus();$('usageMessage').textContent='확인된 정보를 표시했습니다. 수치가 없으면 미연결 또는 제공되지 않는 정보입니다.'}catch(e){$('usageMessage').textContent=e.message}finally{b.disabled=false}});
+  $('usageRefresh').addEventListener('click',async()=>{const b=$('usageRefresh');b.disabled=true;b.classList.add('refreshing');b.lastElementChild.textContent='확인 중';$('usageMessage').textContent='사용량을 확인하고 있습니다…';try{await api('/api/usage/refresh',{});await refreshStatus();$('usageMessage').textContent=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 확인 완료 · Claude는 마지막 수신 정보입니다. 새 값이 없으면 기존 시각을 유지합니다.'}catch(e){$('usageMessage').textContent='새로고침하지 못했습니다. '+e.message}finally{b.disabled=false;b.classList.remove('refreshing');b.lastElementChild.textContent='새로고침'}});
   $('usageGrid').addEventListener('click',async e=>{const b=e.target.closest('button[data-usage]');if(!b)return;b.disabled=true;try{
     if(b.dataset.usage==='connect'){await api('/api/usage/claude-connect',{});$('usageMessage').textContent='Claude Code 상태줄을 연결했습니다. 새 상태 보고가 도착하면 모델과 한도가 표시됩니다. Claude 데스크톱에는 적용되지 않습니다.'}
     else await api('/api/usage/limited',{agent:b.dataset.agent,limited:b.dataset.limited==='true'});
@@ -396,6 +430,6 @@ if(API){
   $('panel').addEventListener('click',async e=>{const b=e.target.closest('button[data-agent]');if(!b)return;b.disabled=true;b.textContent='연결 중…';try{await api('/api/connect',{agent:b.dataset.agent})}catch(err){b.textContent='실패';b.title=err.message}refreshStatus()});
 }else{$('hint').hidden=false}
 window.__TIDE=render;
-render({"sessions":[{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"검색 인덱스 설계","status":"waiting","now":"매핑 초안 완료, 분석기 선택만 남음","needsYou":"한글 분석기 nori(형태소) vs ngram(부분일치) 중 골라줘","steps":[{"text":"데이터 컬럼 정리","state":"done"},{"text":"매핑 초안","state":"done","detail":"단지명·주소는 text+keyword, 가격은 long"},{"text":"분석기 결정","state":"doing"}],"id":"apt-search-index","mtime":1793152824362.196,"timing":{"데이터 컬럼 정리":{"end":1793155211975,"start":1793155211975},"매핑 초안":{"end":1793155211975,"start":1793155211975},"분석기 결정":{"start":1793155211975}}},{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"실거래가 데이터 수집","status":"working","now":"국토부 API 페이지네이션 처리 중","steps":[{"text":"API 키 발급","state":"done"},{"text":"수집 스크립트","state":"doing","detail":"2019~2026년, 월별 호출"},{"text":"정제","state":"todo"},{"text":"색인","state":"todo"}],"id":"es-crawl","mtime":1793152824363.2012,"timing":{"API 키 발급":{"end":1793155211975,"start":1793155211975},"수집 스크립트":{"start":1793155211975},"정제":{},"색인":{}}},{"agent":"claude","project":"pickcase","title":"Pickcase 백업 개선","task":"백업을 zip으로 바꾸기","goal":"사진이 많아도 백업되게","status":"blocked","now":"restoreBackup 테스트가 실패해서 원인 보는 중","needsYou":"","error":{"where":"tests/records.cjs:142 · npm test","message":"AssertionError: expected 3 photos, got 0\n    at restore (tests/records.cjs:142:12)"},"steps":[{"text":"zip 라이브러리 고르기","state":"done","detail":"react-native-zip-archive (Expo 플러그인 있음)"},{"text":"exportBackup zip으로","state":"done"},{"text":"restoreBackup zip 읽기","state":"error","detail":"압축 푼 경로가 캐시 폴더라 사진 참조가 깨짐"},{"text":"테스트 고치기","state":"todo"}],"log":["zip 안 사진 경로를 상대 경로로 바꾸기로 함"],"id":"pickcase-backup-zip","mtime":1793152824364.1958,"timing":{"zip 라이브러리 고르기":{"end":1793155211975,"start":1793155211975},"exportBackup zip으로":{"end":1793155211975,"start":1793155211975},"restoreBackup zip 읽기":{"start":1793155211975},"테스트 고치기":{}}},{"agent":"claude","project":"trendot","title":"트렌닷 콘텐츠","task":"카드뉴스 10월 4주차","status":"done","now":"카드 6장 완성, Figma에 올림","steps":[{"text":"주제 리서치","state":"done"},{"text":"카드 6장","state":"done"},{"text":"릴스 버전","state":"skipped","detail":"이번 주는 건너뜀"}],"id":"trendot-cards","mtime":1793152824364.1958,"timing":{"주제 리서치":{"end":1793155211975,"start":1793155211975},"카드 6장":{"end":1793155211975,"start":1793155211975},"릴스 버전":{}}}],"builtAt":1793155211975,"settings":{"notify":true,"notifyOn":["waiting","blocked","done"]}});
+render({"sessions":[{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"검색 인덱스 설계","status":"waiting","now":"매핑 초안 완료, 분석기 선택만 남음","needsYou":"한글 분석기 nori(형태소) vs ngram(부분일치) 중 골라줘","steps":[{"text":"데이터 컬럼 정리","state":"done"},{"text":"매핑 초안","state":"done","detail":"단지명·주소는 text+keyword, 가격은 long"},{"text":"분석기 결정","state":"doing"}],"id":"apt-search-index","mtime":1793152824362.196,"timing":{"데이터 컬럼 정리":{"end":1793159764055,"start":1793159764055},"매핑 초안":{"end":1793159764055,"start":1793159764055},"분석기 결정":{"start":1793159764055}}},{"agent":"codex","project":"apt-search","title":"아파트 검색 포트폴리오","task":"실거래가 데이터 수집","status":"working","now":"국토부 API 페이지네이션 처리 중","steps":[{"text":"API 키 발급","state":"done"},{"text":"수집 스크립트","state":"doing","detail":"2019~2026년, 월별 호출"},{"text":"정제","state":"todo"},{"text":"색인","state":"todo"}],"id":"es-crawl","mtime":1793152824363.2012,"timing":{"API 키 발급":{"end":1793159764055,"start":1793159764055},"수집 스크립트":{"start":1793159764055},"정제":{},"색인":{}}},{"agent":"claude","project":"pickcase","title":"Pickcase 백업 개선","task":"백업을 zip으로 바꾸기","goal":"사진이 많아도 백업되게","status":"blocked","now":"restoreBackup 테스트가 실패해서 원인 보는 중","needsYou":"","error":{"where":"tests/records.cjs:142 · npm test","message":"AssertionError: expected 3 photos, got 0\n    at restore (tests/records.cjs:142:12)"},"steps":[{"text":"zip 라이브러리 고르기","state":"done","detail":"react-native-zip-archive (Expo 플러그인 있음)"},{"text":"exportBackup zip으로","state":"done"},{"text":"restoreBackup zip 읽기","state":"error","detail":"압축 푼 경로가 캐시 폴더라 사진 참조가 깨짐"},{"text":"테스트 고치기","state":"todo"}],"log":["zip 안 사진 경로를 상대 경로로 바꾸기로 함"],"id":"pickcase-backup-zip","mtime":1793152824364.1958,"timing":{"zip 라이브러리 고르기":{"end":1793159764055,"start":1793159764055},"exportBackup zip으로":{"end":1793159764055,"start":1793159764055},"restoreBackup zip 읽기":{"start":1793159764055},"테스트 고치기":{}}},{"agent":"claude","project":"trendot","title":"트렌닷 콘텐츠","task":"카드뉴스 10월 4주차","status":"done","now":"카드 6장 완성, Figma에 올림","steps":[{"text":"주제 리서치","state":"done"},{"text":"카드 6장","state":"done"},{"text":"릴스 버전","state":"skipped","detail":"이번 주는 건너뜀"}],"id":"trendot-cards","mtime":1793152824364.1958,"timing":{"주제 리서치":{"end":1793159764055,"start":1793159764055},"카드 6장":{"end":1793159764055,"start":1793159764055},"릴스 버전":{}}}],"builtAt":1793159764055,"settings":{"notify":true,"notifyOn":["waiting","blocked","done"]}});
 setInterval(()=>{const s=document.createElement('script');s.src='board-data.js?t='+Date.now();s.onload=s.onerror=()=>s.remove();document.head.appendChild(s)},3000);
 </script></body></html>

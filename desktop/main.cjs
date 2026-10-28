@@ -128,6 +128,17 @@ async function start() {
       } finally {status=original;paintUsage()}
     })()`);
     if (!usageUI.manual || !usageUI.unknown || !usageUI.expired) throw new Error('Usage UI failed: ' + JSON.stringify(usageUI));
+    if (process.env.TIDEWATCH_SCREENSHOT_DIR) {
+      fs.mkdirSync(process.env.TIDEWATCH_SCREENSHOT_DIR, { recursive: true });
+      win.showInactive();
+      for (const theme of ['light', 'dark']) {
+        await win.webContents.executeJavaScript(`document.documentElement.dataset.theme=${JSON.stringify(theme)};
+          status.usage={claude:{model:'claude-opus-5-5',manualLimited:true},codex:{model:'GPT-6.1',observedAt:Date.now(),windows:[{usedPercent:38,windowDurationMins:300,resetsAt:Date.now()/1000+7200}]}};paintUsage();
+          new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))`);
+        const image = await win.webContents.capturePage();
+        fs.writeFileSync(path.join(process.env.TIDEWATCH_SCREENSHOT_DIR, theme + '.png'), image.toPNG());
+      }
+    }
     await win.webContents.executeJavaScript(`document.getElementById('miniBtn').click()`);
     const mini = windows.get('mini');
     if (!mini) throw new Error('Mini button did not open an app window');

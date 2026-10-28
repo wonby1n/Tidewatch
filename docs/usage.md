@@ -21,7 +21,7 @@ Codex 데스크톱에 포함된 CLI 또는 PATH의 `codex` 실행 파일을 찾�
 
 ## Claude Code
 
-상단의 **사용량 연결**을 누르면 `~/.claude/settings.json`의 공식 `statusLine` 연결을 추가합니다. 다른 설정은 보존하며, 최초 연결 전 상태줄 설정만 `~/.tidewatch/claude-statusline-before-usage.json`에 저장합니다. 환경 변수나 다른 설정은 백업에 복사하지 않습니다. 이미 다른 커스텀 상태줄이 있으면 덮어쓰지 않고 안내합니다.
+상단 Claude Code 요약을 펼친 뒤 **사용량 연결**을 누르면 `~/.claude/settings.json`의 공식 `statusLine` 연결을 추가합니다. 다른 설정은 보존하며, 최초 연결 전 상태줄 설정만 `~/.tidewatch/claude-statusline-before-usage.json`에 저장합니다. 환경 변수나 다른 설정은 백업에 복사하지 않습니다. 이미 다른 커스텀 상태줄이 있으면 덮어쓰지 않고 안내합니다.
 
 상태줄은 추론 토큰을 사용하지 않습니다. Claude Code가 전달한 `model`, `context_window`, `rate_limits` 중 필요한 필드만 `~/.tidewatch/usage/`에 저장합니다. 한도는 지원되는 구독과 세션에서 API 응답 이후 제공되므로, 아직 응답하지 못했거나 한도 소진 상태라면 수치가 없을 수 있습니다. Claude **데스크톱 앱**에는 이 CLI 상태줄 연결이 적용되지 않습니다.
 

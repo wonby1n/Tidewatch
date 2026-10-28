@@ -10,7 +10,7 @@ Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으
 
 [English](README.md) · [한국어](README.ko.md)
 
-<img src="docs/demo.gif" alt="Tidewatch 데모: 막혔던 카드가 고쳐지면서 물이 차오르고 '너 차례'로 바뀐다" width="880">
+<img src="docs/app.png" alt="Tidewatch 새 화면: 사용량 요약과 작업 카드 (예제 데이터)" width="880">
 
 </div>
 
