@@ -19,6 +19,8 @@ Each card fills with water as the work moves forward.
 
 ## Desktop app (Windows)
 
+The window, taskbar and notifications use Tidewatch icons. WSL integration is optional and is not enabled automatically. The app and WSL hooks consume CPU, memory and filesystem resources; zero performance impact is not guaranteed. If another app slows down, compare with WSL monitoring and Tidewatch disabled separately before attributing the cause.
+
 **WSL Claude Code:** use **설정 → WSL Claude 연결** to connect a running WSL distribution. Existing Claude settings are preserved; lifecycle hooks report tool activity, permission waits and response completion to the Windows board. [Setup and limitations](docs/wsl.md)
 
 **GitHub projects:** use **＋ GitHub에서 추가** to connect your GitHub account, select a repository, and either clone it or link its existing local folder once. Saved projects have **새 작업** (New) and **이어하기** (Resume) buttons with a Claude/Codex selector; no repeated folder picker. Official GitHub CLI authentication and its permissions are explained in [GitHub projects](docs/github-projects.md).
