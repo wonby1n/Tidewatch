@@ -49,12 +49,33 @@ $brush = { param($hex) (New-Object System.Windows.Media.BrushConverter).ConvertF
 
 $colors = @{ waiting = '#FF7A3D'; blocked = '#EF4444'; working = '#3B82F6'; done = '#22C55E'; sleep = '#64748B' }
 $labels = @{ waiting = '너 차례'; blocked = '막힘'; working = '작업 중'; done = '끝' }
-$state = @{ mood = 'sleep'; dir = 1; t = 0.0; still = $false; tip = '' }
+$state = @{ mood = 'sleep'; dir = 1; t = 0.0; still = $false; tip = ''; dragging = $false }
 
 # --- 화면 위치: 작업표시줄 바로 위 ---
 $area = [System.Windows.SystemParameters]::WorkArea
-$win.Top = $area.Bottom - $win.Height + 1
-$win.Left = $area.Left + ($area.Width - $win.Width) * 0.8
+$screenLeft = [System.Windows.SystemParameters]::VirtualScreenLeft
+$screenTop = [System.Windows.SystemParameters]::VirtualScreenTop
+$screenRight = $screenLeft + [System.Windows.SystemParameters]::VirtualScreenWidth
+$screenBottom = $screenTop + [System.Windows.SystemParameters]::VirtualScreenHeight
+$posFile = Join-Path $Dir 'pet.json'
+
+function Go-Home {
+  $win.Top = $area.Bottom - $win.Height + 1
+  $win.Left = $area.Left + ($area.Width - $win.Width) * 0.8
+}
+
+function Save-Position {
+  try { @{ left = [int]$win.Left; top = [int]$win.Top } | ConvertTo-Json | Set-Content -Encoding UTF8 $posFile } catch {}
+}
+
+# 예전에 옮겨 둔 자리가 있고 화면 안이면 거기서 시작
+Go-Home
+try {
+  $saved = Get-Content -Raw -Encoding UTF8 $posFile | ConvertFrom-Json
+  if ($saved.left -ge $screenLeft -and $saved.left -le $screenRight - 60 -and $saved.top -ge $screenTop -and $saved.top -le $screenBottom - 60) {
+    $win.Left = $saved.left; $win.Top = $saved.top
+  }
+} catch {}
 
 # --- 세션 읽기 ---
 function Read-Sessions {
@@ -127,9 +148,9 @@ function Tick {
   [System.Windows.Controls.Canvas]::SetTop($n.LegL, 50); [System.Windows.Controls.Canvas]::SetTop($n.LegR, 50)
   switch ($state.mood) {
     'working' {
-      if (-not $state.still) {
+      if (-not $state.still -and -not $state.dragging) {
         $next = $win.Left + 1.3 * $state.dir
-        if ($next -lt $area.Left -or $next -gt $area.Right - $win.Width) { $state.dir = -$state.dir } else { $win.Left = $next }
+        if ($next -lt $screenLeft -or $next -gt $screenRight - $win.Width) { $state.dir = -$state.dir } else { $win.Left = $next }
         $n.Flip.ScaleX = $state.dir
         $step = [Math]::Sin($t * 12)
         [System.Windows.Controls.Canvas]::SetTop($n.LegL, 50 - [Math]::Max(0, $step) * 3)
@@ -190,6 +211,8 @@ $startupItem = New-MenuEntry 'Windows 시작할 때 켜기' {
 }
 [void]$menu.Items.Add($startupItem)
 [void]$menu.Items.Add((New-Object System.Windows.Controls.Separator))
+[void]$menu.Items.Add((New-MenuEntry '작업표시줄로 돌아가기' { Go-Home; Remove-Item $posFile -Force -ErrorAction SilentlyContinue }))
+[void]$menu.Items.Add((New-Object System.Windows.Controls.Separator))
 [void]$menu.Items.Add((New-MenuEntry '펫 끄기' { $win.Close() }))
 $menu.Add_Opened({
   $conf = $null
@@ -200,8 +223,34 @@ $menu.Add_Opened({
 })
 $win.ContextMenu = $menu
 
-$n.Bot.Add_MouseLeftButtonUp({ Open-Board })
-$n.Bubble.Add_MouseLeftButtonUp({ Open-Board })
+# 짧게 누르면 현황판, 누른 채 끌면 옮기기
+$drag = @{ down = $false; moved = $false; x = 0.0; y = 0.0 }
+$onDown = {
+  param($sender, $e)
+  $p = $e.GetPosition($win)
+  $drag.down = $true; $drag.moved = $false; $drag.x = $p.X; $drag.y = $p.Y
+}
+$onMove = {
+  param($sender, $e)
+  if (-not $drag.down -or $e.LeftButton -ne 'Pressed') { return }
+  $p = $e.GetPosition($win)
+  if ([Math]::Abs($p.X - $drag.x) + [Math]::Abs($p.Y - $drag.y) -lt 5) { return }
+  $drag.moved = $true; $drag.down = $false
+  $state.dragging = $true
+  try { $win.DragMove() } catch {}
+  $state.dragging = $false
+  Save-Position
+}
+$onUp = {
+  param($sender, $e)
+  if ($drag.down -and -not $drag.moved) { Open-Board }
+  $drag.down = $false
+}
+foreach ($el in @($n.Bot, $n.Bubble)) {
+  $el.Add_MouseLeftButtonDown($onDown)
+  $el.Add_MouseMove($onMove)
+  $el.Add_MouseLeftButtonUp($onUp)
+}
 
 # --- 타이머 ---
 $anim = New-Object System.Windows.Threading.DispatcherTimer
