@@ -1,0 +1,52 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { EventEmitter } = require('node:events');
+const { PassThrough } = require('node:stream');
+const { createProjects, repoName, remoteName } = require('../desktop/projects.cjs');
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tidewatch-projects-'));
+const gh = path.join(root, 'gh.exe'); fs.writeFileSync(gh, '');
+const cwd = path.join(root, "existing ' project"); fs.mkdirSync(cwd);
+let authed = true, remote = 'git@github.com:owner/repo.git', launches = [], calls = [], browser = [], loginChild;
+const execute = async (binary, args, options) => {
+  calls.push({ binary, args, options });
+  if (args[0] === 'api' && args.at(-1) === 'user') { if (!authed) throw new Error('No account'); return JSON.stringify({ login: 'owner' }); }
+  if (args[0] === 'api') return JSON.stringify([{ full_name: 'owner/repo', private: true, description: '<script>hello</script>' }, { full_name: 'owner/clone', private: false }]);
+  if (args[0] === '-C') return remote;
+  if (args[0] === 'repo') { fs.mkdirSync(args[3], { recursive: true }); return ''; }
+  throw new Error('Unexpected operation');
+};
+const create = () => createProjects({ root, gh, execute, dialog: { showOpenDialog: async () => ({ filePaths: [cwd] }) }, openExternal: async url => browser.push(url), openTerminal: async options => { launches.push(options); return options; }, spawnLogin: () => { const c = new EventEmitter(); c.stdout = new PassThrough(); c.stderr = new PassThrough(); c.kill = () => c.emit('close', 1); loginChild = c; return c; } });
+let passed = 0;
+const check = (label, fn) => { fn(); passed++; console.log('PASS ' + label); };
+(async () => {
+  const service = create();
+  check('repository identifiers reject shell text and path traversal', () => { for (const input of ['owner/..', '../repo', 'owner/repo;calc', 'https://evil/x', '-owner/repo']) assert.throws(() => repoName(input)); });
+  check('only canonical GitHub HTTPS and SSH origins can be linked', () => { assert.equal(remoteName('https://github.com/Owner/repo.git'), 'owner/repo'); assert.equal(remoteName('git@github.com:owner/repo.git'), 'owner/repo'); assert.equal(remoteName('https://evil/owner/repo'), null); });
+  await assert.rejects(service.repositories()); passed++;
+  await service.connect(); const page = await service.repositories();
+  check('connecting returns an account and preserves private repository labels', () => { assert.equal(service.snapshot().account, 'owner'); assert.equal(page.repos[0].private, true); });
+  await assert.rejects(service.add('owner/unlisted', 'clone')); passed++;
+  remote = 'https://github.com/other/wrong.git'; await assert.rejects(service.add('owner/repo', 'existing')); passed++;
+  remote = 'git@github.com:owner/repo.git'; await service.add('owner/repo', 'existing');
+  check('existing folder registration persists only repository and local metadata', () => { const text = fs.readFileSync(path.join(root, 'projects.json'), 'utf8'); assert.ok(text.includes('owner/repo')); assert.ok(!text.includes('token')); });
+  await service.launch('owner/repo', 'codex', 'resume');
+  check('saved projects resume in their folder without another folder dialog', () => { assert.deepEqual(launches[0], { cwd, agent: 'codex', mode: 'resume' }); assert.ok(service.snapshot().projects[0].lastOpenedAt); });
+  await assert.rejects(service.launch('owner/repo', 'codex', 'exec')); passed++;
+  await service.add('owner/clone', 'clone');
+  check('clone uses an argument array and does not fetch submodules', () => { const args = calls.find(c => c.args[0] === 'repo').args; assert.equal(args[2], 'owner/clone'); assert.equal(args.at(-1), '--no-recurse-submodules'); });
+  service.disconnect();
+  check('disconnect retains local projects without logging out other CLI users', () => { assert.equal(service.snapshot().connected, false); assert.equal(service.snapshot().projects.length, 2); assert.ok(!calls.some(c => c.args.includes('logout'))); });
+  service.remove('owner/repo');
+  check('unregister never deletes the working folder', () => { assert.ok(fs.existsSync(cwd)); assert.equal(service.snapshot().projects.length, 1); });
+  authed = false; await service.connect();
+  loginChild.stderr.write('! First copy your one-time code: ABCD-1234\n');
+  check('device login exposes a one-time code and only opens the official login page', () => { assert.equal(service.snapshot().login.code, 'ABCD-1234'); assert.deepEqual(browser, ['https://github.com/login/device']); });
+  authed = true; loginChild.emit('close', 0); await new Promise(r => setTimeout(r, 20));
+  check('completed login updates connection state without exposing a token', () => { assert.equal(service.snapshot().connected, true); assert.equal(service.snapshot().login, null); });
+  service.disconnect(); authed=false; await service.connect(); loginChild.emit('close', 1); await new Promise(r=>setTimeout(r,10));
+  check('cancelled login restores a retryable state',()=>{assert.equal(service.snapshot().connected,false);assert.equal(service.snapshot().login.state,'error')});
+  service.stop(); fs.rmSync(root, { recursive: true, force: true });
+  console.log(passed + ' project checks passed');
+})().catch(error => { console.error(error); process.exitCode = 1; });

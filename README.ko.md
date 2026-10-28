@@ -16,6 +16,8 @@ Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으
 
 ## 전용 데스크톱 앱 (Windows)
 
+**GitHub 저장소에서 프로젝트 추가:** `＋ GitHub에서 추가` → 계정 연결 → 내 저장소 선택 → `기존 폴더 연결` 또는 `이 컴퓨터에 받기`로 한 번만 등록합니다. 이후 프로젝트에서 Claude·Codex를 고르고 `새 작업`·`이어하기`로 바로 열 수 있습니다. 폴더를 매번 선택하지 않습니다. [인증·권한·저장 위치 안내](docs/github-projects.md)
+
 Edge·Chrome을 실행하지 않고 자체 창으로 열리는 Electron 앱을 추가했습니다. 현황판과 메모장 모드를 앱 창으로 열고, 창 크기와 위치를 기억합니다. 다시 실행하면 기존 앱 창으로 돌아오며, 마지막 창을 닫으면 앱이 시작한 로컬 서버도 종료됩니다.
 
 **[Tidewatch-Setup.exe 다운로드](https://github.com/wonby1n/Tidewatch/releases/latest/download/Tidewatch-Setup.exe)** · [릴리스와 파일 검증값](https://github.com/wonby1n/Tidewatch/releases/latest)
@@ -36,6 +38,7 @@ Edge·Chrome을 실행하지 않고 자체 창으로 열리는 Electron 앱을 �
 git clone https://github.com/wonby1n/Tidewatch.git
 cd Tidewatch
 npm ci
+npm run prepare:github
 npm run package:win
 powershell -NoProfile -File desktop/install.ps1
 ```

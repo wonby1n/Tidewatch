@@ -131,7 +131,7 @@ export function readCodexLimits(binary) {
         }
       }
     });
-    send({ method: 'initialize', id: 1, params: { clientInfo: { name: 'tidewatch', title: 'Tidewatch', version: '1.3.0' } } });
+    send({ method: 'initialize', id: 1, params: { clientInfo: { name: 'tidewatch', title: 'Tidewatch', version: '1.4.0' } } });
   });
 }
 

@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import crypto from 'node:crypto';
+import extract from '@electron-internal/extract-zip';
+const version='2.103.3';
+const expected='98d0cfa794721665d7973dd728c78aff7bd836d58f10f6d7a03568eccb0a22e0';
+const target=path.resolve(import.meta.dirname,'../vendor/github-cli');
+const archive=path.join(os.tmpdir(),'tidewatch-gh-'+version+'.zip');
+const response=await fetch('https://github.com/cli/cli/releases/download/v'+version+'/gh_'+version+'_windows_amd64.zip');
+if(!response.ok)throw new Error('GitHub CLI download failed: '+response.status);
+const data=Buffer.from(await response.arrayBuffer());
+if(crypto.createHash('sha256').update(data).digest('hex')!==expected)throw new Error('GitHub CLI checksum mismatch');
+fs.writeFileSync(archive,data);fs.mkdirSync(target,{recursive:true});
+await extract(archive,{dir:target});
+if(!fs.existsSync(path.join(target,'bin/gh.exe')))throw new Error('GitHub CLI archive layout changed');
+fs.writeFileSync(path.join(target,'TIDEWATCH-PROVENANCE.txt'),`GitHub CLI ${version}\nhttps://github.com/cli/cli/releases/tag/v${version}\nSHA256 ${expected}\n`);
+console.log('Verified GitHub CLI '+version+' prepared.');

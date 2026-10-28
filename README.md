@@ -19,6 +19,8 @@ Each card fills with water as the work moves forward.
 
 ## Desktop app (Windows)
 
+**GitHub projects:** use **＋ GitHub에서 추가** to connect your GitHub account, select a repository, and either clone it or link its existing local folder once. Saved projects have **새 작업** (New) and **이어하기** (Resume) buttons with a Claude/Codex selector; no repeated folder picker. Official GitHub CLI authentication and its permissions are explained in [GitHub projects](docs/github-projects.md).
+
 **Start or resume terminal work:** choose **터미널 작업**, an agent, and a project folder. Tidewatch opens Claude Code or Codex in that folder and remembers the last folder. Resume opens the CLI conversation picker; it does not yet bind a card to an exact terminal conversation. Keep active conversations in their existing terminal. The corresponding CLI must already be installed.
 
 Tidewatch now includes a standalone Electron desktop app. It opens its own window without launching Edge or Chrome. The board and compact view run inside the app; window size and position are remembered, and opening it again focuses the existing instance. The local backend stops when you close the last app window.
@@ -41,6 +43,7 @@ Build and install from source instead (Node.js and npm required):
 git clone https://github.com/wonby1n/Tidewatch.git
 cd Tidewatch
 npm ci
+npm run prepare:github
 npm run package:win
 powershell -NoProfile -File desktop/install.ps1
 ```

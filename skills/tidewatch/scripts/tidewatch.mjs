@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v9 — https://github.com/wonby1n/tidewatch
+// Tidewatch v10 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -625,6 +625,7 @@ dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-r
 .m-origin{font-size:10px;color:var(--sub);flex:1}.m-title{margin-top:8px;font-size:14px;font-weight:750;line-height:1.45;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m-ago{font-size:10px}
 .m-callout{margin-top:8px;border-radius:7px;background:var(--chip);padding:7px 9px;font-size:12px;line-height:1.55;overflow-wrap:anywhere}.m-callout strong{display:block;font-size:9px;margin-bottom:2px;color:var(--sub);font-weight:650}.m-callout p{margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m-row.waiting .m-callout{background:var(--youbg)}.m-row.waiting .m-callout strong{color:var(--youtx)}.m-row.blocked .m-callout{background:var(--errbg)}.m-row.blocked .m-callout strong{color:var(--errtx)}
 .m-location{margin-top:5px;color:var(--sub);font:10px/1.5 ui-monospace,Consolas,monospace;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.m-progress{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:10px;color:var(--sub)}.m-progress b{font-weight:750;color:var(--ink)}.m-progress em{font-style:normal;font-weight:700;color:var(--c)}.m-row .track.m{margin-top:5px;gap:3px}.m-row .track.m i{height:6px}.m-step{margin-top:5px;font-size:10px;line-height:1.5;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m-row.blocked .m-step{color:var(--errtx);font-weight:650}.m-stale{font-size:10px;color:var(--sub);margin-top:5px}
+.projects{padding:0 24px 18px}.projects-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.projects h2{font-size:13px;color:var(--sub)}.projects-top select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:5px}.project-row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px;min-width:0}.project-row strong{font-size:13px;overflow-wrap:anywhere}.project-row p{font-size:11px;color:var(--sub);margin:5px 0;overflow-wrap:anywhere}.project-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.project-empty{font-size:12px;line-height:1.7;color:var(--sub);padding:12px 0}.project-search{margin:10px 0}.repo-list{max-height:40vh;overflow:auto}.repo-list button{font-size:11px}#projectDialog{width:min(520px,calc(100vw - 32px))}.github-code{font:700 24px ui-monospace,Consolas,monospace;letter-spacing:3px;color:var(--ink)}.github-note{font-size:11px!important}#githubMessage:empty{display:none}@media(max-width:520px){.projects{padding-left:16px;padding-right:16px}}
 </style></head><body>
 <header>
   <div class="brand">
@@ -632,13 +633,14 @@ dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-r
     <div><h1>Tidewatch</h1><p class="tag">AI 작업을 한눈에</p></div>
   </div>
   <div class="ctrl">
-    <button class="btn" id="terminalBtn" hidden>터미널 작업</button>
+    <button class="btn" id="projectsBtn" hidden>프로젝트</button>
     <button class="btn" id="miniBtn" title="작은 메모 창으로 보기">메모로 보기</button>
     <details class="settings"><summary class="btn">설정</summary><div class="settings-menu">
     <label>카드 크기<div class="seg" id="size" role="group" aria-label="크기"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button></div></label>
     <div class="seg" id="theme" role="group" aria-label="테마"><button data-v="auto">자동</button><button data-v="light">라이트</button><button data-v="dark">다크</button></div>
     <span class="bell" id="bell"></span>
     <button class="btn" id="clear">끝난 카드 정리</button>
+    <button class="btn" id="terminalBtn" hidden>다른 폴더에서 열기</button>
     <div class="panel" id="panel" hidden>
       <button class="tg" id="petBtn" type="button"><i></i><span></span></button>
       <button class="tg" id="notifyBtn" type="button"><i></i><span></span></button>
@@ -648,6 +650,7 @@ dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-r
     <span class="meta" id="meta"></span>
   </div>
 </header>
+<section class="projects" id="projects" hidden aria-label="등록한 프로젝트"><div class="projects-top"><h2>내 프로젝트</h2><div><select id="projectAgent" aria-label="실행할 에이전트"><option value="claude">Claude</option><option value="codex">Codex</option></select> <button class="btn" id="projectAdd">＋ GitHub에서 추가</button></div></div><div id="projectList"></div></section>
 <section class="usage" id="usage" hidden aria-label="AI 모델과 사용 한도">
   <div class="usage-top"><h2>AI 사용 상태</h2><button class="btn" id="usageRefresh" type="button" title="Codex 한도와 수신된 Claude 상태를 다시 확인" aria-label="모델과 사용량 새로고침"><span class="refresh-icon" aria-hidden="true">↻</span><span>새로고침</span></button></div>
   <div class="usage-grid" id="usageGrid"></div>
@@ -661,6 +664,7 @@ dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-r
 <div id="mini" hidden></div>
 <div class="empty" id="empty" hidden>아직 바다에 나간 세션이 없어요. Claude Code나 Codex에서 <code>$tidewatch</code> 또는 "타이드워치 켜줘"라고 해 보세요.</div>
 <dialog id="linkDialog"><form id="linkForm"><h2>Claude 대화 연결</h2><p>이 작업의 Claude 대화 또는 Code 세션 링크를 넣으세요. 연결하지 않으면 Claude 앱만 열리며, 정확한 세션은 직접 선택해야 합니다.</p><input id="sessionLink" type="url" placeholder="https://claude.ai/code/session_…" aria-label="Claude 대화 링크" required><p id="linkError" role="alert"></p><div class="dialog-actions"><button class="btn" id="linkCancel" type="button">취소</button><button class="btn" type="submit">연결 저장</button></div></form></dialog>
+<dialog id="projectDialog"><h2>GitHub에서 프로젝트 추가</h2><p>내 저장소를 고르고 처음 한 번만 연결하세요. 다음부터 프로젝트에서 바로 시작하거나 이어갈 수 있습니다.</p><div id="githubAccount"></div><p class="github-note">공식 GitHub CLI로 인증합니다. 인증 화면에는 GitHub CLI가 표시되며 repo·read:org·gist 권한을 요청합니다. Tidewatch는 저장소 조회와 선택한 저장소 받기에 사용합니다.</p><p class="github-note">Git이 설치되어 있어야 저장소를 받을 수 있습니다. 이어하기는 CLI 대화 목록을 엽니다. 이미 실행 중인 대화는 기존 창에서 계속 사용하세요.</p><p id="githubMessage" role="status"></p><input class="project-search" id="repoSearch" placeholder="불러온 저장소 검색" aria-label="불러온 저장소 검색" hidden><div class="repo-list" id="repoList"></div><button class="btn" id="repoMore" hidden>더 불러오기</button><div class="dialog-actions"><button class="btn" id="projectClose">닫기</button></div></dialog>
 <div class="action-toast" id="actionToast" role="status"></div>
 <script>
 const ST={waiting:['너 차례','#ff7a3d',0,'?'],blocked:['막힘','#ef4444',1,'!'],working:['작업 중','#3b82f6',2,''],done:['끝','#22c55e',3,'✓']};
@@ -877,7 +881,55 @@ $('linkCancel').addEventListener('click',()=>$('linkDialog').close());
 $('linkForm').addEventListener('submit',async e=>{e.preventDefault();if(!window.tidewatch)return;try{await window.tidewatch.saveLink(linkingSession,$('sessionLink').value.trim());$('linkDialog').close();await refreshStatus();render(last);actionMessage('이 카드에 Claude 대화 링크를 연결했습니다.')}catch(err){$('linkError').textContent=err.message}});
 window.addEventListener('tidewatch-focus',e=>{const card=[...document.querySelectorAll('.card')].find(c=>c.dataset.id===e.detail);if(card){card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('session-focus');setTimeout(()=>card.classList.remove('session-focus'),3000)}});
 async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
+let projectState={projects:[]}, githubRepos=[], repoPage=0, repoMore=false, projectPending=false, projectPoll=null;
+function paintProjects(){
+  $('projectList').innerHTML=projectState.projects.length?projectState.projects.map(p=>'<article class="project-row"><strong>'+esc(p.repository)+'</strong><p>'+esc(p.cwd)+'</p><p>'+(p.available?(p.lastOpenedAt?'최근 열기 · '+ago(p.lastOpenedAt):'연결 완료'):'폴더를 찾을 수 없습니다. 등록을 해제하고 다시 연결하세요.')+'</p><div class="project-actions"><button class="btn" data-project-launch="'+esc(p.repository)+'" data-mode="resume" '+(!p.available?'disabled':'')+'>이어하기</button><button class="btn" data-project-launch="'+esc(p.repository)+'" data-mode="new" '+(!p.available?'disabled':'')+'>새 작업</button><button class="btn" data-project-remove="'+esc(p.repository)+'">등록 해제</button></div></article>').join(''):'<div class="project-empty">GitHub에서 프로젝트를 추가하세요.<br>등록한 프로젝트는 폴더를 다시 고르지 않고 바로 열 수 있습니다.</div>';
+  const l=projectState.login;
+  $('githubAccount').innerHTML=projectState.connected?'<p><strong>'+esc(projectState.account||'연결된 GitHub 계정')+'</strong> <button class="btn" data-github-refresh>저장소 새로고침</button> <button class="btn" data-github-disconnect>연결 해제</button></p>':l&&['starting','waiting'].includes(l.state)?'<p>브라우저에서 GitHub 인증을 완료하세요.</p>'+(l.code?'<p class="github-code">'+esc(l.code)+'</p><button class="btn" data-github-device>인증 화면 열기</button>':'<p>인증 코드 준비 중…</p>'):'<button class="btn" data-github-connect>GitHub 계정 연결</button>';
+  if(l?.state==='error')$('githubMessage').textContent=l.message;
+}
+function paintRepos(){
+  const query=$('repoSearch').value.toLowerCase();
+  const rows=githubRepos.filter(r=>r.repository.toLowerCase().includes(query));
+  $('repoSearch').hidden=!projectState.connected;
+  $('repoList').innerHTML=rows.map(r=>'<article class="project-row"><strong>'+esc(r.repository)+'</strong><p>'+(r.private?'비공개':'공개')+(r.archived?' · 보관된 저장소':'')+'</p><p>'+esc(r.description)+'</p><div class="project-actions">'+(projectState.projects.some(p=>p.repository.toLowerCase()===r.repository.toLowerCase())?'<span>등록됨</span>':'<button class="btn" data-repo="'+esc(r.repository)+'" data-method="clone">이 컴퓨터에 받기</button><button class="btn" data-repo="'+esc(r.repository)+'" data-method="existing">기존 폴더 연결</button>')+'</div></article>').join('')||(projectState.connected?'<p class="project-empty">표시할 저장소가 없습니다. 조직 저장소는 GitHub의 접근 승인이 필요할 수 있습니다.</p>':'');
+  $('repoMore').hidden=!repoMore||!projectState.connected;
+}
+async function loadRepos(reset=false){
+  const result=await window.tidewatch.projects('repos',{page:reset?1:repoPage+1});
+  projectState.account=result.account;githubRepos=reset?result.repos:[...githubRepos,...result.repos];repoPage=result.page;repoMore=result.hasMore;paintProjects();paintRepos();
+}
+async function projectAction(callback){
+  if(projectPending)return;projectPending=true;
+  const buttons=[...$('projectDialog').querySelectorAll('button:not(#projectClose)')];buttons.forEach(b=>b.disabled=true);
+  try{await callback()}catch(e){$('githubMessage').textContent=e.message;actionMessage(e.message)}finally{projectPending=false;buttons.forEach(b=>b.disabled=false)}
+}
+async function showProjects(){
+  $('projectDialog').showModal();$('githubMessage').textContent='';
+  await projectAction(async()=>{projectState=await window.tidewatch.projects('state');paintProjects();paintRepos();if(projectState.connected)await loadRepos(true)});
+  clearInterval(projectPoll);projectPoll=setInterval(async()=>{
+    if(!$('projectDialog').open||projectPending)return;
+    if(!projectState.login||!['starting','waiting'].includes(projectState.login.state))return;
+    await projectAction(async()=>{const previous=projectState.connected;projectState=await window.tidewatch.projects('state');paintProjects();if(!previous&&projectState.connected){$('githubMessage').textContent='GitHub 연결 완료';await loadRepos(true)}});
+  },1500);
+}
+$('projectDialog').addEventListener('close',()=>clearInterval(projectPoll));
+$('projectClose').onclick=()=>$('projectDialog').close();
+$('repoSearch').oninput=paintRepos;
+$('repoMore').onclick=()=>projectAction(()=>loadRepos());
+$('projectDialog').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;void projectAction(async()=>{
+  if(b.hasAttribute('data-github-connect')){projectState=await window.tidewatch.projects('connect');paintProjects();if(projectState.connected)await loadRepos(true)}
+  if(b.hasAttribute('data-github-device'))await window.tidewatch.projects('device');
+  if(b.hasAttribute('data-github-refresh')){await loadRepos(true);$('githubMessage').textContent='저장소 목록을 갱신했습니다.'}
+  if(b.hasAttribute('data-github-disconnect')){projectState=await window.tidewatch.projects('disconnect');githubRepos=[];repoMore=false;paintProjects();paintRepos();$('githubMessage').textContent='Tidewatch 연결을 해제했습니다. 등록한 폴더와 GitHub CLI 로그인은 유지됩니다.'}
+  if(b.dataset.repo){$('githubMessage').textContent=b.dataset.method==='clone'?'저장소를 받는 중입니다. 크기에 따라 시간이 걸릴 수 있습니다.':'기존 프로젝트 폴더를 선택하세요.';const r=await window.tidewatch.projects('add',{repository:b.dataset.repo,method:b.dataset.method});if(!r.canceled){projectState=r;paintProjects();paintRepos();$('githubMessage').textContent='프로젝트를 등록했습니다. 다음부터 내 프로젝트에서 바로 실행하세요.'}else $('githubMessage').textContent='폴더 선택을 취소했습니다.'}
+})});
+$('projectList').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;b.disabled=true;try{
+  if(b.dataset.projectLaunch){await window.tidewatch.projects('launch',{repository:b.dataset.projectLaunch,agent:$('projectAgent').value,mode:b.dataset.mode});actionMessage(b.dataset.mode==='resume'?'프로젝트에서 대화 선택 목록을 열었습니다.':'프로젝트에서 새 터미널 작업을 열었습니다.');projectState=await window.tidewatch.projects('state');paintProjects()}
+  if(b.dataset.projectRemove){projectState=await window.tidewatch.projects('remove',{repository:b.dataset.projectRemove});paintProjects();actionMessage('프로젝트 등록을 해제했습니다. 실제 폴더는 유지됩니다.')}
+}catch(e){actionMessage(e.message)}finally{b.disabled=false}});
 if(API){
+  if(window.tidewatch?.projects){$('projects').hidden=false;$('projectsBtn').hidden=false;$('projectsBtn').onclick=showProjects;$('projectAdd').onclick=showProjects;window.tidewatch.projects('state').then(s=>{projectState=s;paintProjects()}).catch(e=>actionMessage(e.message))}
   if(window.tidewatch?.launchTerminal){$('terminalBtn').hidden=false;$('terminalBtn').onclick=async()=>{const b=$('terminalBtn');b.disabled=true;try{const r=await window.tidewatch.launchTerminal();if(!r.canceled)actionMessage('선택한 프로젝트에서 터미널을 열었습니다. 이어할 대화는 터미널 목록에서 선택하세요.')}catch(e){actionMessage(e.message)}finally{b.disabled=false}}}
   if(window.tidewatch?.onActivity)window.tidewatch.onActivity(event=>{status={...status,activity:[event,...(status?.activity||[]).filter(e=>e.key!==event.key)]};$('activity').innerHTML=activityMarkup();if(MINI)render(last);refreshBoard()});
   $('usageGrid').addEventListener('toggle',e=>{if(e.target.matches('details[data-usage-agent]'))store.set('usage.open.'+e.target.dataset.usageAgent,e.target.open?'1':'0')},true);

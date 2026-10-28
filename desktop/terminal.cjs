@@ -38,6 +38,12 @@ async function launchTerminal({ root, dialog, smoke = false }) {
     if (folder.canceled || !folder.filePaths[0]) return { canceled: true };
     cwd = folder.filePaths[0];
   }
+  const result = await openTerminal({ agent, mode, cwd, binary, smoke });
+  if (!smoke) fs.writeFileSync(file, JSON.stringify({ cwd }));
+  return result;
+}
+async function openTerminal({ agent, mode, cwd, binary = findBinary(agent), smoke = false }) {
+  if (!binary) throw new Error((agent === 'claude' ? 'Claude Code' : 'Codex') + ' CLI를 찾을 수 없습니다. 먼저 설치하세요.');
   const command = commandFor(agent, mode, cwd, binary);
   if (smoke) return { agent, mode, cwd, testOnly: true };
   const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
@@ -45,7 +51,6 @@ async function launchTerminal({ root, dialog, smoke = false }) {
     const child = spawn(powershell, ['-NoLogo', '-NoProfile', '-NoExit', '-EncodedCommand', Buffer.from(command, 'utf16le').toString('base64')], { cwd, detached: true, stdio: 'ignore', windowsHide: false, env: { ...process.env, ELECTRON_RUN_AS_NODE: '' } });
     child.once('error', reject); child.once('spawn', () => { child.unref(); resolve(); });
   });
-  fs.writeFileSync(file, JSON.stringify({ cwd }));
   return { agent, mode, cwd };
 }
-module.exports = { literal, commandFor, launchTerminal };
+module.exports = { literal, commandFor, launchTerminal, openTerminal };

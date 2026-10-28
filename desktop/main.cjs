@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, dialog, screen, Notification, shell, ipcMain } = require('electron');
 const { createActivityMonitor, targetFor, saveLink, validId } = require('./activity.cjs');
-const { launchTerminal } = require('./terminal.cjs');
+const { launchTerminal, openTerminal } = require('./terminal.cjs');
+const { createProjects } = require('./projects.cjs');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -15,6 +16,7 @@ const source = path.join(__dirname, '..', 'skills', 'tidewatch');
 let backend, origin, quitting = false;
 let activityMonitor, pendingSession = null, lastOpened = '', lastOpenedAt = 0;
 let protocolReady=false;
+let projectService;
 const notifications = new Set();
 const windows = new Map();
 const stateFile = path.join(app.getPath('userData'), 'windows.json');
@@ -132,6 +134,23 @@ async function start() {
   activityMonitor = createActivityMonitor({ root, onEvent: onActivity });
   activityMonitor.lease();
   const checkSender = event => { if (!event.senderFrame || !allowed(event.senderFrame.url)) throw new Error('허용되지 않은 요청입니다.'); };
+  projectService = createProjects({ root, gh: path.join(__dirname,'..','vendor','github-cli','bin','gh.exe'), dialog,
+    openExternal: url => smoke ? Promise.resolve() : shell.openExternal(url),
+    openTerminal: options => openTerminal({ ...options, smoke }),
+  });
+  ipcMain.handle('tidewatch:projects', async (event, action, payload = {}) => {
+    checkSender(event);
+    if(!payload || typeof payload!=='object')throw new Error('잘못된 요청입니다.');
+    if(action==='state')return projectService.snapshot();
+    if(action==='device') {if(!smoke)await shell.openExternal('https://github.com/login/device');return {opened:true};}
+    if(action==='connect') {if(smoke) return {testOnly:true};return projectService.connect();}
+    if(action==='repos')return projectService.repositories(payload.page);
+    if(action==='add') {if(smoke)throw new Error('Test cannot change local projects');return projectService.add(payload.repository,payload.method);}
+    if(action==='launch')return projectService.launch(payload.repository,payload.agent,payload.mode);
+    if(action==='remove')return projectService.remove(payload.repository);
+    if(action==='disconnect')return projectService.disconnect();
+    throw new Error('지원하지 않는 요청입니다.');
+  });
   ipcMain.handle('tidewatch:open-session', async (event, id) => { checkSender(event); return openSession(id); });
   ipcMain.handle('tidewatch:save-link', (event, id, link) => { checkSender(event); saveLink(root, id, link); return { saved: true }; });
   let launchingTerminal = false;
@@ -189,6 +208,22 @@ async function start() {
         node:typeof require, token:!!window.TW_TOKEN, cards:document.querySelectorAll('.card').length};
     })()`);
     if (!result.board || !result.usage || !result.token || result.status !== 200 || result.node !== 'undefined') throw new Error(JSON.stringify(result));
+    const projectUI=await win.webContents.executeJavaScript(`(async()=>{
+      const saved=projectState;const repos=githubRepos;
+      const persisted=await window.tidewatch.projects('state');
+      let blocked=false;try{await window.tidewatch.projects('unknown')}catch{blocked=true}
+      try{
+        projectState={connected:true,account:'example',projects:[{repository:'example/project',cwd:'C:/Projects/project',available:true}]};
+        githubRepos=[{repository:'example/<img src=x onerror=alert(1)>',description:'<script>bad</script>',private:true}];
+        paintProjects();paintRepos();$('projectDialog').showModal();
+        const r={visible:!$('projects').hidden,launch:document.querySelectorAll('[data-project-launch]').length===2,
+          escaped:!$('repoList').querySelector('img,script'),private:$('repoList').textContent.includes('비공개'),
+          overflow:document.documentElement.scrollWidth>innerWidth,bridge:Array.isArray(persisted.projects),blocked};
+        $('projectDialog').close();return r;
+      }finally{projectState=saved;githubRepos=repos;paintProjects();paintRepos()}
+    })()`);
+    if(!projectUI.visible||!projectUI.launch||!projectUI.escaped||!projectUI.private||projectUI.overflow||!projectUI.bridge||!projectUI.blocked)throw new Error('Project UI failed: '+JSON.stringify(projectUI));
+    console.log('PROJECT_UI_OK '+JSON.stringify(projectUI));
     fs.writeFileSync(path.join(root,'sessions','open-session-test.json'),JSON.stringify({agent:'claude',origin:'desktop',sessionUrl:'https://claude.ai/code/session_TEST123'}));
     const launchCheck=await win.webContents.executeJavaScript(`(async()=>{
       const target=await window.tidewatch.openSession('open-session-test');
@@ -277,6 +312,7 @@ function fail(error) {
   if (!smoke) dialog.showErrorBox('Tidewatch', error.message);
   quitting = true;
   activityMonitor?.stop();
+  projectService?.stop();
   if (backend && !backend.killed) backend.kill();
   app.exit(1);
 }
@@ -284,6 +320,7 @@ function fail(error) {
 app.on('before-quit', () => {
   quitting = true;
   activityMonitor?.stop();
+  projectService?.stop();
   if (backend && !backend.killed) backend.kill();
   try {
     const pidFile = path.join(root, 'server.pid');
