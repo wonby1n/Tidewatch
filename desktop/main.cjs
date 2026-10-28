@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, screen, Notification, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, dialog, screen, Notification, shell, ipcMain, nativeImage } = require('electron');
 const { createActivityMonitor, targetFor, saveLink, validId } = require('./activity.cjs');
 const { launchTerminal, openTerminal } = require('./terminal.cjs');
 const { createProjects } = require('./projects.cjs');
@@ -11,7 +11,8 @@ const os = require('node:os');
 const net = require('node:net');
 
 // Register the installed app identity before Windows initializes notifications.
-app.setAppUserModelId(app.isPackaged?'io.github.wonby1n.tidewatch':'io.github.wonby1n.tidewatch.development');
+const APP_ID=app.isPackaged?'io.github.wonby1n.tidewatch':'io.github.wonby1n.tidewatch.development';
+app.setAppUserModelId(APP_ID);
 
 const smoke = process.argv.includes('--smoke-test');
 let root = process.env.TIDEWATCH_DIR || path.join(os.homedir(), '.tidewatch');
@@ -90,12 +91,19 @@ function show(mini = false) {
     saved.y + height > d.workArea.y && saved.y < d.workArea.y + d.workArea.height)) {
     bounds.x = saved.x; bounds.y = saved.y;
   }
+  const windowIcon=nativeImage.createFromPath(path.join(source,'assets/tidewatch.png'));
+  if(windowIcon.isEmpty())throw new Error('Tidewatch 창 아이콘을 읽지 못했습니다.');
   const win = new BrowserWindow({
     ...bounds, minWidth: mini ? 320 : 440, minHeight: 300,
-    title: 'Tidewatch', icon: path.join(source, 'assets', 'tidewatch.ico'),
+    title: 'Tidewatch', icon: windowIcon,
     show: false, autoHideMenuBar: true, backgroundColor: '#edf2f6',
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true },
   });
+  if(process.platform==='win32'){
+    win.setIcon(windowIcon);
+    win.setAppDetails({appId:APP_ID,appIconPath:path.join(source,'assets/tidewatch.ico'),appIconIndex:0,
+      ...(app.isPackaged?{relaunchCommand:'"'+process.execPath+'"'+(mini?' --mini':''),relaunchDisplayName:'Tidewatch'}:{})});
+  }
   windows.set(key, win);
   win.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   win.webContents.on('will-navigate', (event, url) => { if (!allowed(url)) event.preventDefault(); });
