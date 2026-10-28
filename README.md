@@ -19,6 +19,8 @@ Each card fills with water as the work moves forward.
 
 ## Desktop app (Windows)
 
+**Start or resume terminal work:** choose **터미널 작업**, an agent, and a project folder. Tidewatch opens Claude Code or Codex in that folder and remembers the last folder. Resume opens the CLI conversation picker; it does not yet bind a card to an exact terminal conversation. Keep active conversations in their existing terminal. The corresponding CLI must already be installed.
+
 Tidewatch now includes a standalone Electron desktop app. It opens its own window without launching Edge or Chrome. The board and compact view run inside the app; window size and position are remembered, and opening it again focuses the existing instance. The local backend stops when you close the last app window.
 
 **[Download Tidewatch-Setup.exe](https://github.com/wonby1n/Tidewatch/releases/latest/download/Tidewatch-Setup.exe)** · [All releases and checksums](https://github.com/wonby1n/Tidewatch/releases/latest)

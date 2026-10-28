@@ -12,3 +12,8 @@
 알림은 Tidewatch 스킬이 상태를 기록하는 세션 기준입니다. 임의의 터미널 명령을 자동 감시하지는 않습니다. OS 알림 팝업 표시는 Windows 알림·방해 금지 설정의 영향을 받습니다.
 
 [알림·앱 연결·펫 문제 해결](https://github.com/wonby1n/Tidewatch/blob/main/docs/notifications.md) · [설치 안내](https://github.com/wonby1n/Tidewatch/blob/main/docs/windows-install.md)
+# 프로젝트에서 터미널 시작·이어하기
+
+앱 위쪽 `터미널 작업`에서 Claude Code·Codex의 새 작업 또는 대화 이어하기를 선택할 수 있습니다. 프로젝트 폴더를 고르면 그 위치에서 CLI가 열려 `cd`를 직접 입력할 필요가 없습니다. 마지막 사용 폴더를 기억합니다.
+
+이어하기는 CLI의 대화 선택 목록을 엽니다. 카드와 특정 원본 대화의 자동 연결, 실행 중인 터미널 포커스 이동은 아직 지원하지 않습니다. 이미 실행 중인 대화는 기존 창에서 계속 사용하세요. 해당 CLI가 설치되어 있어야 하며, Tidewatch가 대신 프롬프트를 전송하지 않습니다.

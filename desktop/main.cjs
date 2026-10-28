@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, dialog, screen, Notification, shell, ipcMain } = require('electron');
 const { createActivityMonitor, targetFor, saveLink, validId } = require('./activity.cjs');
+const { launchTerminal } = require('./terminal.cjs');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -124,11 +125,23 @@ async function freePort() {
 async function start() {
   app.setAppUserModelId('io.github.wonby1n.tidewatch');
   fs.mkdirSync(root, { recursive: true });
+  if(smoke){
+    fs.mkdirSync(path.join(root,'sessions'),{recursive:true});
+    fs.writeFileSync(path.join(root,'sessions','waiting-fixture.json'),JSON.stringify({agent:'claude',title:'테스트 응답 필요',status:'waiting',needsYou:'테스트 선택',steps:[]}));
+  }
   activityMonitor = createActivityMonitor({ root, onEvent: onActivity });
   activityMonitor.lease();
   const checkSender = event => { if (!event.senderFrame || !allowed(event.senderFrame.url)) throw new Error('허용되지 않은 요청입니다.'); };
   ipcMain.handle('tidewatch:open-session', async (event, id) => { checkSender(event); return openSession(id); });
   ipcMain.handle('tidewatch:save-link', (event, id, link) => { checkSender(event); saveLink(root, id, link); return { saved: true }; });
+  let launchingTerminal = false;
+  ipcMain.handle('tidewatch:terminal', async event => {
+    checkSender(event);
+    if (launchingTerminal) return { canceled: true };
+    launchingTerminal = true;
+    try { return await launchTerminal({ root, dialog, smoke }); }
+    finally { launchingTerminal = false; }
+  });
   if (app.isPackaged && !smoke) {
     const protocolRegistered=app.isDefaultProtocolClient('tidewatch')||app.setAsDefaultProtocolClient('tidewatch');
     protocolReady=protocolRegistered;

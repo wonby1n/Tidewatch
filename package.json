@@ -9,7 +9,7 @@
   "main": "desktop/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node test/activity.cjs && node test/usage.mjs && node test/smoke.mjs",
+    "test": "node test/terminal.cjs && node test/activity.cjs && node test/usage.mjs && node test/smoke.mjs",
     "test:desktop": "electron . --smoke-test",
     "package:win": "node scripts/package-win.mjs",
     "installer:win": "electron-builder --win nsis --x64 --prepackaged release/Tidewatch-win32-x64 --publish never"

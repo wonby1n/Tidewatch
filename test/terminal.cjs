@@ -1,0 +1,21 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { literal, commandFor, launchTerminal } = require('../desktop/terminal.cjs');
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tidewatch-terminal-'));
+const cwd = path.join(root, "project ' & $(noop)"); fs.mkdirSync(cwd);
+const binary = path.join(root, 'test.exe'); fs.writeFileSync(binary, '');
+assert.equal(literal("a'b"), "'a''b'");
+assert.ok(commandFor('claude', 'resume', cwd, binary).endsWith("' --resume"));
+assert.ok(commandFor('codex', 'resume', cwd, binary).endsWith("' resume"));
+assert.ok(!commandFor('codex', 'new', cwd, binary).includes(' resume'));
+assert.throws(() => commandFor('codex', 'exec', cwd, binary));
+assert.throws(() => commandFor('claude', 'resume', 'relative', binary));
+assert.throws(() => commandFor('claude', 'resume', cwd, path.join(root, 'missing.exe')));
+(async () => {
+  const result = await launchTerminal({ root, smoke: true, dialog: { showMessageBox: async () => ({ response: 4 }) } });
+  assert.equal(result.canceled, true);
+  fs.rmSync(root, { recursive: true, force: true });
+  console.log('Terminal: 8 checks passed (literal paths, interactive resume, validation and cancel).');
+})().catch(error => { console.error(error); process.exitCode = 1; });

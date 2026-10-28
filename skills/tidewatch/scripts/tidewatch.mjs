@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tidewatch v8 — https://github.com/wonby1n/tidewatch
+// Tidewatch v9 — https://github.com/wonby1n/tidewatch
 // usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
@@ -632,6 +632,7 @@ dialog{width:min(420px,calc(100vw - 32px));border:1px solid var(--line);border-r
     <div><h1>Tidewatch</h1><p class="tag">AI 작업을 한눈에</p></div>
   </div>
   <div class="ctrl">
+    <button class="btn" id="terminalBtn" hidden>터미널 작업</button>
     <button class="btn" id="miniBtn" title="작은 메모 창으로 보기">메모로 보기</button>
     <details class="settings"><summary class="btn">설정</summary><div class="settings-menu">
     <label>카드 크기<div class="seg" id="size" role="group" aria-label="크기"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button></div></label>
@@ -877,6 +878,7 @@ $('linkForm').addEventListener('submit',async e=>{e.preventDefault();if(!window.
 window.addEventListener('tidewatch-focus',e=>{const card=[...document.querySelectorAll('.card')].find(c=>c.dataset.id===e.detail);if(card){card.scrollIntoView({block:'center',behavior:'smooth'});card.classList.add('session-focus');setTimeout(()=>card.classList.remove('session-focus'),3000)}});
 async function refreshStatus(){try{status=await api('/api/status');paintPanel()}catch(e){}}
 if(API){
+  if(window.tidewatch?.launchTerminal){$('terminalBtn').hidden=false;$('terminalBtn').onclick=async()=>{const b=$('terminalBtn');b.disabled=true;try{const r=await window.tidewatch.launchTerminal();if(!r.canceled)actionMessage('선택한 프로젝트에서 터미널을 열었습니다. 이어할 대화는 터미널 목록에서 선택하세요.')}catch(e){actionMessage(e.message)}finally{b.disabled=false}}}
   if(window.tidewatch?.onActivity)window.tidewatch.onActivity(event=>{status={...status,activity:[event,...(status?.activity||[]).filter(e=>e.key!==event.key)]};$('activity').innerHTML=activityMarkup();if(MINI)render(last);refreshBoard()});
   $('usageGrid').addEventListener('toggle',e=>{if(e.target.matches('details[data-usage-agent]'))store.set('usage.open.'+e.target.dataset.usageAgent,e.target.open?'1':'0')},true);
   $('usage').hidden=false;
