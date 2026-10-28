@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Tidewatch v3 — https://github.com/wonby1n/tidewatch
-// usage: node tidewatch.mjs <build|open|app|path|remove <id>|prune>
+// usage: node tidewatch.mjs <build|open|app|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -181,6 +181,16 @@ function toast(title, body) {
   } catch {}
 }
 
+/** 작업표시줄 위를 걸어다니는 펫 (Windows 전용, pet.ps1) */
+function pet() {
+  const file = path.join(ROOT, 'pet.ps1');
+  if (process.platform !== 'win32') return '펫은 아직 Windows에서만 돼요.';
+  if (!fs.existsSync(file)) return `${file}이 없어요. 설치 명령을 다시 실행해 주세요.`;
+  build();
+  spawn('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', file], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref();
+  return '펫을 띄웠어요. 작업표시줄 위를 보세요.';
+}
+
 function remove(id) {
   const safe = path.basename(id);
   fs.rmSync(path.join(SESS, `${safe}.json`), { force: true });
@@ -195,6 +205,7 @@ function main() {
     case 'build': return console.log(build());
     case 'open': return console.log(open());
     case 'app': return console.log(app());
+    case 'pet': return console.log(pet());
     case 'path': return console.log(SESS);
     case 'notify': {
       // notify on | off | status | only waiting,blocked
@@ -212,7 +223,7 @@ function main() {
       return console.log(build());
     case 'prune': return console.log(build());
   }
-  console.error('usage: tidewatch.mjs build | open | app | path | remove <id> | prune | notify on|off|status|only <waiting,blocked,done>');
+  console.error('usage: tidewatch.mjs build | open | app | pet | path | remove <id> | prune | notify on|off|status|only <waiting,blocked,done>');
   process.exit(1);
 }
 

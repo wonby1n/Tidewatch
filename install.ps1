@@ -18,6 +18,7 @@ if (-not $Src -or -not (Test-Path (Join-Path $Src 'SKILL.md'))) {
   New-Item -ItemType Directory -Force -Path (Join-Path $Src 'assets') | Out-Null
   Invoke-WebRequest "$Raw/skills/tidewatch/SKILL.md" -OutFile (Join-Path $Src 'SKILL.md') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/scripts/tidewatch.mjs" -OutFile (Join-Path $Src 'scripts\tidewatch.mjs') -UseBasicParsing
+  Invoke-WebRequest "$Raw/skills/tidewatch/scripts/pet.ps1" -OutFile (Join-Path $Src 'scripts\pet.ps1') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/assets/tidewatch.ico" -OutFile (Join-Path $Src 'assets\tidewatch.ico') -UseBasicParsing
   Invoke-WebRequest "$Raw/skills/tidewatch/assets/tidewatch.png" -OutFile (Join-Path $Src 'assets\tidewatch.png') -UseBasicParsing
 }
@@ -41,6 +42,14 @@ Copy-Item (Join-Path $Src 'scripts\tidewatch.mjs') (Join-Path $Board 'tidewatch.
 $Icon = Join-Path $Board 'tidewatch.ico'
 Copy-Item (Join-Path $Src 'assets\tidewatch.ico') $Icon -Force
 Copy-Item (Join-Path $Src 'assets\tidewatch.png') (Join-Path $Board 'tidewatch.png') -Force
+$Pet = Join-Path $Board 'pet.ps1'
+# stop a running pet so the new version starts below
+try {
+  Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction Stop |
+    Where-Object { $_.CommandLine -like '*\.tidewatch\pet.ps1*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+} catch {}
+Copy-Item (Join-Path $Src 'scripts\pet.ps1') $Pet -Force
 $Page = node (Join-Path $Board 'tidewatch.mjs') build
 if ($Tmp) { Remove-Item -Recurse -Force $Tmp }
 
@@ -67,10 +76,25 @@ try {
   $Shortcut.Description = 'Tidewatch - AI session board'
   $Shortcut.Save()
   Write-Host "  + Desktop shortcut: $Link"
+  # Pet shortcut: a little bot that walks on top of the taskbar
+  $PetLink = Join-Path $Desktop 'Tidewatch Pet.lnk'
+  $P = $Shell.CreateShortcut($PetLink)
+  $P.TargetPath = 'powershell.exe'
+  $P.Arguments = "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Pet`""
+  $P.WindowStyle = 7
+  $P.IconLocation = "$Icon,0"
+  $P.Description = 'Tidewatch pet'
+  $P.Save()
+  Write-Host "  + Desktop shortcut: $PetLink"
 } catch {
   Write-Host "  (Skipped the desktop shortcut: $($_.Exception.Message))"
   Write-Host "  Open it any time with: node `"$Board\tidewatch.mjs`" app"
 }
+
+try {
+  Start-Process -FilePath 'powershell.exe' -ArgumentList "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Pet`"" -WindowStyle Hidden
+  Write-Host '  + Pet started (look above the taskbar)'
+} catch { Write-Host "  (Could not start the pet: $($_.Exception.Message))" }
 
 Write-Host ''
 Write-Host "Done! Open the Tidewatch icon on your desktop and keep the board open." -ForegroundColor Green
