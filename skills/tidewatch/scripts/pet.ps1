@@ -174,9 +174,9 @@ function Tick {
 }
 
 # --- 메뉴와 클릭 ---
-function Open-Board {
+function Open-Board([string]$mode = 'app') {
   $script = Join-Path $Dir 'tidewatch.mjs'
-  Start-Process -FilePath 'node' -ArgumentList "`"$script`" app" -WindowStyle Hidden
+  Start-Process -FilePath 'node' -ArgumentList "`"$script`" $mode" -WindowStyle Hidden
 }
 
 $startupLink = Join-Path ([Environment]::GetFolderPath('Startup')) 'Tidewatch Pet.lnk'
@@ -189,7 +189,8 @@ function New-MenuEntry($header, $onClick) {
 }
 
 $menu = New-Object System.Windows.Controls.ContextMenu
-[void]$menu.Items.Add((New-MenuEntry '현황판 열기' { Open-Board }))
+[void]$menu.Items.Add((New-MenuEntry '메모로 보기' { Open-Board 'mini' }))
+[void]$menu.Items.Add((New-MenuEntry '현황판 크게 열기' { Open-Board 'app' }))
 $notifyItem = New-MenuEntry '알림 받기' {
   $on = -not $notifyItem.IsChecked
   $mode = if ($on) { 'on' } else { 'off' }
@@ -247,7 +248,7 @@ $onMove = {
 }
 $onUp = {
   param($sender, $e)
-  if ($drag.down -and -not $drag.moved) { Open-Board }
+  if ($drag.down -and -not $drag.moved) { Open-Board 'mini' }
   $drag.down = $false
 }
 foreach ($el in @($n.Bot, $n.Bubble)) {

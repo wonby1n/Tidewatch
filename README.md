@@ -30,15 +30,22 @@ Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으
 - 봇을 누르면 색이 바뀌어요. 세션마다 처음부터 다른 색이에요
 - 카드의 ✕, 또는 **끝난 카드 정리**로 지우기. 끝난 지 하루 지난 세션은 알아서 정리돼요
 
+## 메모장 모드
+
+큰 창이 부담스러우면 포스트잇 크기의 작은 창으로 볼 수 있어요. 세션마다 상태 배지, 대주제, "지금" 한 줄(내 차례면 "네가 할 일"), 얇은 진행 막대만 보여요.
+
+- 앱 위쪽 **메모로 보기**, 펫 클릭, 또는 `node ~/.tidewatch/tidewatch.mjs mini`
+- 줄을 누르거나 **크게 보기**를 누르면 큰 현황판이 열려요
+
 ## 펫 (Windows)
 
 현황판 창을 띄워 두기 번거로우면, 작업표시줄 위를 걸어다니는 작은 봇이 전체 현황을 알려줘요. 설치하면 바로 뜨고, Tidewatch 앱 위쪽의 **펫** 스위치로 켜고 끌 수 있어요.
 
 - 머리 위 말풍선: `너 차례 2 · Pickcase 백업 개선`처럼 제일 급한 것부터
 - 움직임: 작업 중이면 걸어다니고, 너 차례면 제자리에서 통통, 막히면 덜덜, 다 끝나면 웃고, 조용하면 졸아요
-- 마우스를 올리면 전체 세션 목록, 누르면 현황판이 열려요
+- 마우스를 올리면 전체 세션 목록, 누르면 메모장 모드가 열려요
 - 누른 채 끌면 원하는 곳으로 옮겨져요. 옮긴 자리는 기억하고, 오른쪽 클릭 → 작업표시줄로 돌아가기로 원래 자리로
-- 오른쪽 클릭: 현황판 열기 · 알림 받기 · 가만히 있기 · Windows 시작할 때 켜기 · 작업표시줄로 돌아가기 · 펫 끄기
+- 오른쪽 클릭: 메모로 보기 · 현황판 크게 열기 · 알림 받기 · 가만히 있기 · Windows 시작할 때 켜기 · 작업표시줄로 돌아가기 · 펫 끄기
 
 ## 알림
 
@@ -108,6 +115,8 @@ writable_roots = ["C:\\Users\\me\\.tidewatch"]   # macOS·Linux: "/Users/me/.tid
 
 ```sh
 node ~/.tidewatch/tidewatch.mjs app      # 현황판을 앱 창으로 열기
+node ~/.tidewatch/tidewatch.mjs mini     # 작은 메모 창으로 열기
+node ~/.tidewatch/tidewatch.mjs pet      # 펫 켜기 (Windows)
 node ~/.tidewatch/tidewatch.mjs open     # 기본 브라우저로 열기
 node ~/.tidewatch/tidewatch.mjs build    # 현황판 다시 만들기
 node ~/.tidewatch/tidewatch.mjs remove <id>

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Tidewatch v3 — https://github.com/wonby1n/tidewatch
-// usage: node tidewatch.mjs <build|open|app|serve|pet|path|remove <id>|prune|notify>
+// usage: node tidewatch.mjs <build|open|app|mini|serve|pet|path|remove <id>|prune|notify>
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -141,9 +141,10 @@ async function ensureServer() {
 }
 
 /** 현황판을 앱 창으로 연다. 로컬 서버로 열면 펫·알림·연결 관리까지 된다 */
-async function app() {
+async function app(mini = false) {
   const file = build();
-  const url = (await ensureServer()) ? `http://127.0.0.1:${PORT}/` : pathToFileURL(file).href;
+  const base = (await ensureServer()) ? `http://127.0.0.1:${PORT}/` : pathToFileURL(file).href;
+  const url = mini ? `${base}?mini=1` : base;
   const browser = findBrowser();
   if (!browser) {
     const [bin, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
@@ -151,7 +152,8 @@ async function app() {
     execFile(bin, args, () => {});
     return url;
   }
-  spawn(browser, [`--app=${url}`, '--window-size=480,960'], { detached: true, stdio: 'ignore' }).on('error', () => open()).unref();
+  const size = mini ? '360,520' : '480,960';
+  spawn(browser, [`--app=${url}`, `--window-size=${size}`], { detached: true, stdio: 'ignore' }).on('error', () => open()).unref();
   return url;
 }
 
@@ -336,6 +338,7 @@ function main() {
     case 'build': return console.log(build());
     case 'open': return console.log(open());
     case 'app': return app().then(console.log);
+    case 'mini': return app(true).then(console.log);
     case 'serve': return serve();
     case 'pet': return console.log(pet());
     case 'path': return console.log(SESS);
@@ -355,7 +358,7 @@ function main() {
       return console.log(build());
     case 'prune': return console.log(build());
   }
-  console.error('usage: tidewatch.mjs build | open | app | serve | pet | path | remove <id> | prune | notify on|off|status|only <waiting,blocked,done>');
+  console.error('usage: tidewatch.mjs build | open | app | mini | serve | pet | path | remove <id> | prune | notify on|off|status|only <waiting,blocked,done>');
   process.exit(1);
 }
 
@@ -369,6 +372,30 @@ var TEMPLATE = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 :root[data-theme=dark]{--bg:#08111d;--card:#0f1b2b;--ink:#e8f0f7;--sub:#8a9bab;--line:#1d2c3f;--bot:#dfe9f2;--youbg:#3a2213;--err:#f87171;--errbg:#3a1414;--chip:#1a2738}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
+html[data-mode=mini] body>*:not(#mini):not(script){display:none!important}
+html[data-mode=mini]{--note:#fff6b8;--note2:#fde68a;--noteink:#3b3014}
+@media (prefers-color-scheme:dark){html[data-mode=mini]:not([data-theme=light]){--note:#2b2614;--note2:#4a3f16;--noteink:#f5ecc8}}
+html[data-mode=mini][data-theme=dark]{--note:#2b2614;--note2:#4a3f16;--noteink:#f5ecc8}
+html[data-mode=mini] body{background:var(--note);color:var(--noteink)}
+#mini{padding:12px 12px 16px;font-size:13px}
+.m-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.m-top b{font-size:13px;letter-spacing:.12em}
+.m-pills{display:flex;gap:8px;font-size:12px;font-weight:800;flex:1}
+.m-pills span{display:inline-flex;align-items:center;gap:4px}
+.m-pills i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.m-top button{border:0;background:var(--note2);color:var(--noteink);font-family:inherit;font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;cursor:pointer}
+.m-row{position:relative;padding:8px 10px 9px 12px;margin-bottom:6px;border-radius:8px;background:color-mix(in srgb,var(--note2) 55%,transparent);cursor:pointer;overflow:hidden}
+.m-row:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.m-row:hover{background:var(--note2)}
+.m-h{display:flex;align-items:center;gap:6px;min-width:0}
+.m-h b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.m-badge{flex:none;font-size:10px;font-weight:900;color:#fff;background:var(--c);padding:1px 7px;border-radius:99px}
+.m-ago{flex:none;font-size:11px;opacity:.6}
+.m-now,.m-you{margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.m-now{opacity:.8}
+.m-you{font-weight:800;color:var(--c)}
+.track.m{margin-top:6px;gap:3px}.track.m i{height:4px}
+.m-empty{padding:24px 4px;opacity:.7;text-align:center}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:22px 24px 10px}
 .brand{display:flex;align-items:center;gap:10px}
@@ -514,6 +541,7 @@ html[data-size=l] .grid{zoom:1.18}
     <div class="seg" id="size" role="group" aria-label="크기"><button data-v="s">작게</button><button data-v="m">보통</button><button data-v="l">크게</button></div>
     <div class="seg" id="theme" role="group" aria-label="테마"><button data-v="auto">자동</button><button data-v="light">라이트</button><button data-v="dark">다크</button></div>
     <span class="bell" id="bell"></span>
+    <button class="btn" id="miniBtn" title="작은 메모 창으로 보기">메모로 보기</button>
     <button class="btn" id="clear">끝난 카드 정리</button>
     <span class="meta" id="meta"></span>
   </div>
@@ -527,6 +555,7 @@ html[data-size=l] .grid{zoom:1.18}
 </div>
 <div class="hint2" id="hint" hidden>펫·알림·연결 관리는 바탕화면의 Tidewatch 아이콘으로 열면 쓸 수 있어요</div>
 <div id="board"></div>
+<div id="mini" hidden></div>
 <div class="empty" id="empty" hidden>아직 바다에 나간 세션이 없어요. Claude Code나 Codex에서 <code>$tidewatch</code> 또는 "타이드워치 켜줘"라고 해 보세요.</div>
 <script>
 const ST={waiting:['너 차례','#ff7a3d',0,'?'],blocked:['막힘','#ef4444',1,'!'],working:['작업 중','#3b82f6',2,''],done:['끝','#22c55e',3,'✓']};
@@ -597,6 +626,11 @@ function fill(el,s){
 function render(D){
   last=D;
   const ss=D.sessions.filter(s=>!(+store.get('hide.'+s.id,0)>=s.mtime)).map(s=>({...s,st:ST[s.status]?s.status:'working'})).sort((a,b)=>ST[a.st][2]-ST[b.st][2]||b.mtime-a.mtime);
+  if(MINI){
+    $('mini').hidden=false;renderMini(ss);
+    const need=ss.filter(s=>s.st==='waiting'||s.st==='blocked').length;
+    document.title=(need?'('+need+') ':'')+'Tidewatch';return;
+  }
   // 같은 프로젝트의 세션은 한 묶음으로. 묶음 순서는 그 안에서 가장 급한 카드 기준
   const groups=new Map();
   for(const s of ss){const k=String(s.project||'기타');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(s)}
@@ -642,6 +676,22 @@ const API=location.protocol.startsWith('http')&&window.TW_TOKEN;
 let status=null;
 async function api(p,body){const r=await fetch(p,{method:body?'POST':'GET',headers:{'x-tidewatch-token':window.TW_TOKEN,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
 const NAMES={claude:'Claude Code',codex:'Codex'};
+const MINI=new URLSearchParams(location.search).has('mini');
+if(MINI)document.documentElement.dataset.mode='mini';
+const bigUrl=()=>location.href.split('?')[0];
+function renderMini(ss){
+  const n=k=>ss.filter(s=>s.st===k).length;
+  const pills=Object.entries(ST).filter(([k])=>n(k)).map(([k,v])=>'<span title="'+v[0]+'"><i style="--c:'+v[1]+'"></i>'+n(k)+'</span>').join('');
+  const rows=ss.map(s=>{
+    const color=ST[s.st][1];const steps=(Array.isArray(s.steps)?s.steps:[]).filter(x=>x&&typeof x.text==='string');
+    const line=s.needsYou?'<div class="m-you">'+esc(s.needsYou)+'</div>':s.now?'<div class="m-now">'+esc(s.now)+'</div>':'';
+    return '<div class="m-row" style="--c:'+color+'" title="'+esc((s.task?s.task+' — ':'')+(s.now||''))+'"><div class="m-h"><span class="m-badge">'+ST[s.st][0]+'</span><b>'+esc(s.title||s.id)+'</b><span class="m-ago">'+ago(s.mtime)+'</span></div>'+line
+      +(steps.length?'<div class="track m">'+steps.map(x=>'<i class="'+esc(x.state||'todo')+'"></i>').join('')+'</div>':'')+'</div>';
+  }).join('');
+  $('mini').innerHTML='<div class="m-top"><b>TIDEWATCH</b><span class="m-pills">'+pills+'</span><button type="button" id="bigBtn">크게 보기</button></div>'+(rows||'<div class="m-empty">진행 중인 세션이 없어요 🌊</div>');
+}
+$('mini').addEventListener('click',e=>{if(e.target.closest('#bigBtn')||e.target.closest('.m-row'))window.open(bigUrl(),'tidewatch-big')});
+$('miniBtn').addEventListener('click',()=>window.open(bigUrl()+'?mini=1','tidewatch-mini','popup,width=360,height=520'));
 function paintPanel(){
   if(!status)return;
   const pb=$('petBtn');pb.hidden=status.platform!=='win32';pb.classList.toggle('on',!!status.pet);pb.querySelector('span').textContent=status.pet?'펫 켜짐':'펫 꺼짐';

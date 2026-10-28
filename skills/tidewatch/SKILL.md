@@ -100,6 +100,8 @@ description: Tidewatch — 여러 Claude Code·Codex 세션의 진행 상황을 
 - 세션이 `waiting`·`blocked`·`done`으로 **바뀌는 순간** `build`가 OS 알림(Windows 토스트, macOS 알림 센터, Linux notify-send)을 한 번 띄운다. 그래서 상태를 바꿀 땐 `needsYou`·`now`를 알림에 그대로 떠도 알아듣게 쓴다.
 - 사용자가 "알림 꺼줘"라고 하면 `node ~/.tidewatch/tidewatch.mjs notify off`, "켜줘"면 `notify on`, "막힘이랑 너 차례만 알려줘"처럼 고르면 `notify only waiting,blocked`를 실행한다. 지금 상태는 `notify status`.
 
+사용자가 "메모로 보여줘", "작게 보여줘"라고 하면 `node ~/.tidewatch/tidewatch.mjs mini`로 작은 메모 창을 연다. 메모 창에는 대주제와 `now`(내 차례면 `needsYou`) 한 줄만 보이니 이 두 값을 짧고 분명하게 쓴다.
+
 ## 6. 펫 (Windows)
 
 작업표시줄 위를 걸어다니면서 전체 현황을 보여주는 봇이다. 설치하면 바로 뜨고, 사용자는 Tidewatch 앱 위쪽의 펫 스위치로 켜고 끈다. 사용자가 "펫 켜줘"라고 하면 `node ~/.tidewatch/tidewatch.mjs pet`을 실행한다. 끄기·알림·시작 프로그램 등록은 펫을 오른쪽 클릭하면 나오는 메뉴에서 사용자가 직접 한다.
