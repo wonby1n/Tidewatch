@@ -1,0 +1,1 @@
+{"agent":"codex","project":"apt-search","title":"아파트 검색 인덱스 설계","status":"waiting","now":"매핑 초안 완료, 분석기 선택만 남음","needsYou":"한글 분석기 nori(형태소) vs ngram(부분일치) 중 골라줘","steps":[{"text":"데이터 컬럼 정리","state":"done"},{"text":"매핑 초안","state":"done","detail":"단지명·주소는 text+keyword, 가격은 long"},{"text":"분석기 결정","state":"doing"}]}

@@ -1,0 +1,127 @@
+<div align="center">
+
+# 🌊 Tidewatch
+
+**AI 코딩 세션 10개를 띄워놔도, 지금 누가 어디까지 했는지 한눈에.**
+
+Claude Code와 Codex 세션의 진행 상황을 물이 차오르는 현황판으로 보여주는 에이전트 스킬
+
+<img src="docs/demo.gif" alt="Tidewatch 데모: 오류 난 카드가 고쳐지면서 물이 차오르고 '너 차례'로 바뀐다" width="880">
+
+</div>
+
+## 왜 만들었나
+
+세션을 여러 개 띄워 놓고 일하다 보면, 다른 세션을 보다가 돌아왔을 때 *이 세션이 어디까지 했더라?* 하면서 터미널 로그를 한참 거슬러 올라가게 돼요. Tidewatch는 각 세션이 스스로 상태를 적어 두게 해서, 브라우저 창 하나만 보면 바로 알 수 있게 해 줘요.
+
+- **지금 뭐 하는지**: 카드마다 "지금" 한 줄
+- **어디까지 했는지**: 진행률만큼 물이 차오르고, 단계마다 걸린 시간이 붙어요
+- **어디서 터졌는지**: 오류 난 단계는 빨간 ✕, 파일:줄과 에러 메시지가 "어디서 터졌나"에 떠요
+- **내가 뭘 해야 하는지**: 세션이 나를 기다리면 "네가 할 일"과 함께 카드가 맨 위로 올라오고, 탭 제목에 `(2) Tidewatch`처럼 숫자가 떠요
+
+## 봇 읽는 법
+
+| 봇 | 상태 | 뜻 |
+|---|---|---|
+| 둥실둥실 | 🔵 작업 중 | 알아서 하는 중이에요 |
+| `?` 띄우고 통통 | 🟠 너 차례 | 질문했거나 확인이 필요해요 |
+| X 눈으로 덜덜 | 🔴 막힘 | 오류나 권한 때문에 멈췄어요 |
+| `z` 졸음 | 🔵 + 노란 글씨 | 작업 중인데 30분째 소식이 없어요 |
+| 웃음 | 🟢 끝 | 다 했어요 |
+
+## 설치
+
+[Node.js](https://nodejs.org)가 필요해요. Claude Code와 Codex에 한 번에 설치되고, 바탕화면에 **Tidewatch** 아이콘이 생겨요.
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.ps1 | iex
+```
+
+**macOS · Linux**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/wonby1n/tidewatch/main/install.sh | sh
+```
+
+**직접 설치**: [Releases](https://github.com/wonby1n/tidewatch/releases)에서 `tidewatch-skill.zip`을 받아서 `tidewatch` 폴더를 아래 위치에 풀면 돼요.
+
+| 에이전트 | 스킬 폴더 |
+|---|---|
+| Claude Code | `~/.claude/skills/tidewatch` |
+| Codex | `~/.agents/skills/tidewatch` (예전 버전은 `~/.codex/skills/tidewatch`) |
+
+## 쓰는 법
+
+1. 바탕화면의 **Tidewatch**를 눌러 현황판 창을 열어 둬요. 주소창 없는 좁은 앱 창이라 화면 옆에 붙여 두기 좋아요.
+2. 각 세션에서 이렇게 말해요.
+   - Claude Code: `타이드워치 켜줘` 또는 `/tidewatch`
+   - Codex: `$tidewatch` 또는 `타이드워치 켜줘`
+3. 그다음부터는 세션이 작업을 시작할 때, 단계를 끝낼 때, 오류가 났을 때, 그리고 턴을 끝내기 직전에 알아서 카드를 갱신해요.
+
+여러 단계짜리 작업을 맡기면 말하지 않아도 스킬이 알아서 켜질 수 있어요.
+
+### Codex 샌드박스
+
+Codex의 기본 샌드박스는 작업 폴더 밖에 쓰는 걸 막아서, `~/.tidewatch`에 쓸 때 승인을 물어볼 수 있어요. 매번 묻지 않게 하려면 `~/.codex/config.toml`에 이렇게 추가하세요 (경로는 본인 홈 폴더로, 설정 이름은 Codex 버전에 따라 다를 수 있어요).
+
+```toml
+[sandbox_workspace_write]
+writable_roots = ["C:\\Users\\me\\.tidewatch"]   # macOS·Linux: "/Users/me/.tidewatch"
+```
+
+## 명령어
+
+```sh
+node ~/.tidewatch/tidewatch.mjs app      # 현황판을 앱 창으로 열기
+node ~/.tidewatch/tidewatch.mjs open     # 기본 브라우저로 열기
+node ~/.tidewatch/tidewatch.mjs build    # 현황판 다시 만들기
+node ~/.tidewatch/tidewatch.mjs prune    # 끝난 지 하루, 소식 없이 3일 지난 세션 정리
+node ~/.tidewatch/tidewatch.mjs remove <id>
+```
+
+## 어떻게 동작하나
+
+```
+세션(Claude Code / Codex) ──쓰기──▶ ~/.tidewatch/sessions/<id>.json
+                         ──실행──▶ tidewatch.mjs build ──▶ tidewatch.html + board-data.js
+현황판 창 ◀──3초마다 board-data.js만 다시 읽기 (새로고침 없음)
+```
+
+- 서버도, 계정도, 네트워크도 필요 없어요. 모든 게 내 컴퓨터의 `~/.tidewatch` 폴더 안에만 있어요.
+- 단계별 소요 시간은 `build`가 돌 때마다 단계 상태 변화를 `~/.tidewatch/.history`에 기록해서 계산해요.
+- 세션 파일 형식은 [SKILL.md](skills/tidewatch/SKILL.md)에 있어요. 다른 에이전트나 스크립트도 같은 형식으로 쓰면 카드가 떠요.
+
+<details>
+<summary>세션 파일 예시</summary>
+
+```json
+{
+  "agent": "claude",
+  "project": "pickcase",
+  "title": "백업을 zip으로 바꾸기",
+  "status": "blocked",
+  "now": "restoreBackup 테스트가 실패해서 원인 보는 중",
+  "error": { "where": "tests/records.cjs:142 · npm test", "message": "AssertionError: expected 3 photos, got 0" },
+  "steps": [
+    { "text": "zip 라이브러리 고르기", "state": "done" },
+    { "text": "restoreBackup zip 읽기", "state": "error", "detail": "압축 푼 경로가 캐시 폴더라 사진 참조가 깨짐" },
+    { "text": "테스트 고치기", "state": "todo" }
+  ]
+}
+```
+
+</details>
+
+## 개발
+
+```sh
+node test/smoke.mjs          # 예제 세션으로 보드를 만들고 동작 확인
+```
+
+`examples/`의 세션 파일로 현황판이 어떻게 보이는지 바로 볼 수 있어요.
+
+## 라이선스
+
+MIT
